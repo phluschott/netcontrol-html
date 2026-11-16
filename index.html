@@ -3,410 +3,772 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Net Controller – Amateur Radio Net Logging</title>
+<title>Net Controller</title>
 <style>
   :root {
-    --bg: #111111; --panel: #1a1a1a; --field: #262626; --line: #333;
-    --text: #f2f2f2; --muted: #9a9a9a; --accent: #1d4ed8; --accent-h: #2563eb;
+    --bg: #111111; --panel: #1a1a1a; --panel2: #202020; --field: #262626; --line: #333;
+    --text: #f2f2f2; --muted: #9a9a9a; --accent: #1d4ed8; --accent-h: #2563eb; --accent-soft: #1e2a4a;
     --ok: #22c55e; --warn: #f59e0b; --bad: #ef4444;
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.4 Inter, system-ui, sans-serif; }
-  header { background: #181818; border-bottom: 1px solid var(--line); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-  header h1 { margin: 0; font-size: 20px; } header h1 small { font-size: 11px; color: var(--muted); font-weight: 500; }
-  main { max-width: 1000px; margin: 0 auto; padding: 24px 16px 60px; }
-  h2 { margin: 0 0 16px; font-size: 26px; }
-  h3 { margin: 28px 0 14px; font-size: 17px; display: flex; align-items: center; gap: 12px; }
+  header { background: #181818; border-bottom: 1px solid var(--line); padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; position: sticky; top: 0; z-index: 20; }
+  header h1 { margin: 0; font-size: 19px; cursor: pointer; }
+  main { max-width: 1440px; margin: 0 auto; padding: 20px 16px 60px; }
+  .narrow { max-width: 1000px; margin: 0 auto; }
+  h2 { margin: 0; font-size: 24px; }
+  h3 { margin: 28px 0 14px; font-size: 16px; display: flex; align-items: center; gap: 12px; }
   h3::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
-  .card { background: var(--panel); border-radius: 10px; padding: 24px; }
+  h4 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .card { background: var(--panel); border-radius: 10px; padding: 20px; }
   label { display: block; font-size: 13px; color: #d0d0d0; margin-bottom: 6px; }
   .req { color: var(--bad); }
-  input, select, textarea { width: 100%; background: var(--field); color: var(--text); border: 1px solid transparent; border-radius: 6px; padding: 11px 12px; font: inherit; }
+  input, select, textarea { width: 100%; background: var(--field); color: var(--text); border: 1px solid transparent; border-radius: 6px; padding: 10px 12px; font: inherit; }
+  textarea { resize: vertical; }
   input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent-h); }
-  input::placeholder, textarea::placeholder { color: #707070; }
-  .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); margin-bottom: 16px; }
+  input::placeholder, textarea::placeholder { color: #6f6f6f; }
+  input[type=checkbox] { width: auto; }
+  .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); margin-bottom: 14px; }
   .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-  button { background: #2b2b2b; color: var(--text); border: 0; border-radius: 6px; padding: 10px 18px; font: inherit; font-weight: 600; cursor: pointer; }
+  .between { justify-content: space-between; }
+  .spacer { flex: 1; }
+  button { background: #2b2b2b; color: var(--text); border: 0; border-radius: 6px; padding: 9px 16px; font: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; }
   button:hover { background: #383838; }
   button.primary { background: var(--accent); } button.primary:hover { background: var(--accent-h); }
   button.danger { background: #7f1d1d; } button.danger:hover { background: #991b1b; }
-  button.small { padding: 4px 10px; font-size: 12px; }
+  button.small { padding: 5px 10px; font-size: 12px; }
+  button.icon { background: transparent; padding: 4px 8px; color: var(--muted); font-size: 14px; }
+  button.icon:hover { background: #333; color: var(--text); }
+  button.icon.on { color: var(--ok); }
+  button.live { background: #14532d; color: #bbf7d0; }
   .hidden { display: none !important; }
   .muted { color: var(--muted); font-size: 13px; }
-  .modes { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
-  .mode { background: var(--field); border: 2px solid transparent; border-radius: 8px; padding: 14px; cursor: pointer; }
-  .mode input { width: auto; margin-right: 8px; } .mode.sel { border-color: var(--accent-h); }
-  .mode b { display: block; margin-bottom: 4px; }
-  .bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-  .stats { display: flex; gap: 10px; flex-wrap: wrap; }
-  .stat { background: var(--field); border-radius: 8px; padding: 8px 14px; text-align: center; min-width: 84px; }
-  .stat b { display: block; font-size: 20px; } .stat span { font-size: 11px; color: var(--muted); text-transform: uppercase; }
-  .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 700; background: #333; }
-  .badge.live { background: #14532d; color: #86efac; } .badge.closed { background: #4b1d1d; color: #fca5a5; }
-  .badge.Emergency { background: #7f1d1d; color: #fecaca; } .badge.Priority { background: #78350f; color: #fde68a; }
-  .badge.Routine { background: #1e3a8a; color: #bfdbfe; }
-  .callin { position: relative; }
-  #callInput { font-size: 24px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; padding: 14px; }
-  #suggest { position: absolute; left: 0; right: 0; top: 100%; z-index: 10; background: #222; border: 1px solid var(--line); border-radius: 6px; margin-top: 4px; max-height: 300px; overflow-y: auto; box-shadow: 0 8px 24px #000a; }
-  .sg { padding: 9px 14px; cursor: pointer; display: flex; gap: 14px; align-items: baseline; }
-  .sg:hover, .sg.act { background: #2f3b5c; }
-  .sg b { font-size: 17px; letter-spacing: 1px; min-width: 90px; } .sg.add b { color: var(--ok); }
-  mark { background: none; color: #60a5fa; }
-  .err { color: var(--bad); font-size: 13px; min-height: 18px; margin-top: 6px; }
+  .err { color: var(--bad); font-size: 13px; min-height: 18px; margin-top: 4px; }
+  .pill { display: inline-block; padding: 1px 7px; border-radius: 99px; font-size: 11px; font-weight: 700; background: #333; color: #ddd; vertical-align: middle; }
+  .pill.live { background: #14532d; color: #86efac; } .pill.closed { background: #3a3a3a; color: #bbb; }
+  .pill.Emergency { background: #7f1d1d; color: #fecaca; } .pill.Priority { background: #78350f; color: #fde68a; }
+  .pill.Routine { background: #1e3a8a; color: #bfdbfe; } .pill.next { background: var(--accent); color: #fff; }
   table { width: 100%; border-collapse: collapse; }
   th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); font-size: 14px; vertical-align: top; }
   th { color: var(--muted); font-size: 12px; text-transform: uppercase; }
-  td.call { font-weight: 700; letter-spacing: 1px; }
   .tablewrap { overflow-x: auto; }
-  details { margin-top: 12px; } summary { cursor: pointer; color: var(--muted); }
+  details summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+
+  .cards { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+  .netcard { background: var(--panel); border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+  .netcard h2 { font-size: 19px; }
+
+  .sbar { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .stats { display: flex; gap: 8px; flex-wrap: wrap; }
+  .stat { background: var(--panel); border-radius: 8px; padding: 6px 12px; text-align: center; min-width: 74px; }
+  .stat b { display: block; font-size: 19px; } .stat span { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .cols { display: grid; gap: 16px; grid-template-columns: 300px minmax(0, 1fr) 380px; align-items: start; }
+  .col { background: var(--panel); border-radius: 10px; padding: 14px; min-width: 0; }
+  @media (max-width: 1150px) { .cols { grid-template-columns: 280px minmax(0, 1fr); } .cols .side { grid-column: 1 / -1; } }
+  @media (max-width: 720px) { .cols { grid-template-columns: 1fr; } }
+  #callInput { font-size: 22px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; padding: 12px; }
+  .list { display: flex; flex-direction: column; gap: 2px; max-height: 62vh; overflow-y: auto; margin-top: 8px; }
+  .ri { display: flex; gap: 10px; align-items: baseline; padding: 7px 10px; border-radius: 6px; cursor: pointer; }
+  .ri:hover, .ri.act { background: var(--accent-soft); }
+  .ri b { letter-spacing: 1px; min-width: 76px; }
+  .ri .nm { flex: 1; min-width: 0; color: #cfcfcf; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ri.new b { color: var(--ok); }
+  mark { background: none; color: #60a5fa; }
+  .ci { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto auto auto auto; gap: 8px; align-items: center; padding: 8px; border-radius: 8px; cursor: pointer; border: 1px solid transparent; }
+  .ci:hover { background: var(--panel2); }
+  .ci.sel { background: var(--accent-soft); border-color: var(--accent-h); }
+  .ci.done .who b { color: var(--muted); }
+  .ci .num { color: var(--muted); font-size: 12px; text-align: right; }
+  .ci .who b { font-size: 17px; letter-spacing: 1px; margin-right: 4px; }
+  .ci .who .muted { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tabs { display: flex; gap: 4px; margin-bottom: 12px; border-bottom: 1px solid var(--line); }
+  .tabs button { background: none; border-radius: 0; padding: 8px 12px; color: var(--muted); border-bottom: 2px solid transparent; }
+  .tabs button.on { color: var(--text); border-bottom-color: var(--accent-h); }
+  .station { background: var(--panel2); border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+  .station .grid { grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 0 0; }
+  .station input, .station select { padding: 7px 9px; font-size: 14px; }
+  .target { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .target b { color: var(--text); }
+  .note { border-left: 3px solid var(--line); padding: 6px 10px; margin-top: 10px; }
+  .note.tagged { border-left-color: var(--accent-h); }
+  .nh { display: flex; gap: 8px; align-items: center; }
+  .tag { font-size: 12px; font-weight: 700; letter-spacing: 1px; color: #93c5fd; cursor: pointer; }
+  .tag.gen { color: var(--warn); cursor: default; }
+  .nt { margin-top: 3px; white-space: pre-wrap; word-wrap: break-word; }
+  .ann { display: flex; gap: 10px; align-items: flex-start; padding: 8px; border-radius: 6px; cursor: pointer; margin: 0; font-size: 14px; color: var(--text); }
+  .ann:hover { background: var(--panel2); }
+  .ann input { margin-top: 3px; }
+  .ann span { flex: 1; white-space: pre-wrap; }
+  .ann.done span { color: var(--muted); text-decoration: line-through; }
+  .script { background: var(--panel2); border-radius: 8px; padding: 12px; white-space: pre-wrap; font-size: 15px; line-height: 1.55; margin-bottom: 14px; }
+  .script-h { font-size: 12px; text-transform: uppercase; color: var(--muted); margin: 4px 0 6px; letter-spacing: .05em; }
+  .kbd { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  kbd { background: #2b2b2b; border-radius: 4px; padding: 0 5px; font: 11px ui-monospace, monospace; }
+
+  #printView { display: none; }
+  @media print {
+    body { background: #fff; color: #000; }
+    header, main, footer { display: none !important; }
+    #printView { display: block; font: 12px/1.4 system-ui, sans-serif; }
+    #printView table { width: 100%; border-collapse: collapse; } #printView th, #printView td { border: 1px solid #999; color: #000; padding: 4px 6px; font-size: 12px; }
+    #printView h1 { font-size: 20px; margin: 0 0 4px; } #printView h2 { font-size: 15px; margin: 16px 0 6px; }
+  }
   footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px; }
-  @media print { header, .noprint, footer { display: none !important; } body { background: #fff; color: #000; } .card { background: #fff; } th, td { color: #000; border-color: #999; } }
 </style>
 </head>
 <body>
 <header>
-  <h1>📻 Net Controller <small>LOCAL · NO ACCOUNT NEEDED</small></h1>
-  <div class="row noprint">
-    <button id="btnRoster">Roster</button>
-    <button id="btnHistory">Past Nets</button>
-    <button id="btnNew">New Net</button>
+  <h1 data-a="home">📻 Net Controller</h1>
+  <div class="row">
+    <button id="liveBtn" class="live hidden" data-a="resume"></button>
+    <button id="navHome" data-a="home">My Nets</button>
   </div>
 </header>
 
 <main>
-<!-- ============ SETUP VIEW ============ -->
-<section id="setupView">
-  <h2>Create New NET</h2>
-  <form id="setupForm" class="card" autocomplete="off">
-    <div style="margin-bottom:16px"><label>NET Name <span class="req">*</span></label><input id="netName" required placeholder="e.g., Tuesday Evening Skywarn Net" /></div>
-    <div style="margin-bottom:16px"><label>Description (Optional)</label><textarea id="netDesc" rows="2" placeholder="A short summary of what this NET is about."></textarea></div>
-    <div class="grid">
-      <div><label>Type of NET</label>
-        <select id="netType"><option>Skywarn</option><option>Technical</option><option>Emergency</option><option>Social / Ragchew</option><option>Training</option><option>Other</option></select></div>
-      <div><label>Net Control Call Sign <span class="req">*</span></label><input id="ncs" required placeholder="e.g., K9TWX" maxlength="8" style="text-transform:uppercase" /></div>
-    </div>
-
-    <h3>Frequency / Repeater</h3>
-    <div class="grid">
-      <div><label>Repeater / System Name</label><input id="repName" placeholder="e.g., Spring Mountain" /></div>
-      <div><label>Downlink Freq (MHz)</label><input id="repFreq" placeholder="e.g., 145.130" /></div>
-      <div><label>Offset (MHz)</label><input id="repOff" placeholder="e.g., -0.600" /></div>
-      <div><label>PL Tone (Hz)</label><input id="repTone" placeholder="e.g., 156.7" /></div>
-    </div>
-
-    <h3>Check-in Mode</h3>
-    <div class="modes">
-      <label class="mode sel" id="modeFree"><b><input type="radio" name="mode" value="free" checked />Free Entry</b><span class="muted">Type any call sign (4–8 letters &amp; numbers) as stations check in.</span></label>
-      <label class="mode" id="modeRoster"><b><input type="radio" name="mode" value="roster" />Roster Lookup</b><span class="muted">Add your group manually or upload a list. Matches narrow as you type, with an option to add a new call sign not on the list.</span></label>
-    </div>
-    <div id="rosterBox" class="hidden row" style="margin-top:16px">
-      <span class="muted" id="rosterSummary"></span>
-      <button type="button" id="goRoster" class="small">Manage Roster</button>
-    </div>
-
-    <div class="row" style="justify-content:flex-end;margin-top:28px;border-top:1px solid var(--line);padding-top:20px">
-      <button type="button" id="cancelSetup" class="hidden">Cancel</button>
-      <button type="submit" class="primary">Start NET</button>
-    </div>
-  </form>
+<!-- ================= HOME ================= -->
+<section id="vHome" class="narrow">
+  <div class="row between" style="margin-bottom:18px"><h2>My Nets</h2><button class="primary" data-a="newNet">+ New Net</button></div>
+  <div id="netCards" class="cards"></div>
+  <div id="homeEmpty" class="card hidden">
+    <p style="margin-top:0"><b>Set up your net once.</b> Enter the name, schedule, repeater, preamble, standing announcements, and (optionally) your regulars.</p>
+    <p class="muted">After that, each week is: <b>Start Net</b> → read the preamble → roll call → announcements → go around for comments and take notes → <b>End Net</b>. New stations who check in are remembered for next week.</p>
+    <button class="primary" data-a="newNet">Create your first net</button>
+  </div>
 </section>
 
-<!-- ============ NET VIEW ============ -->
-<section id="netView" class="hidden">
-  <div class="bar">
+<!-- ================= EDIT NET ================= -->
+<section id="vEdit" class="narrow hidden">
+  <h2 id="editTitle" style="margin-bottom:16px">Create New NET</h2>
+  <div class="card">
+    <div style="margin-bottom:14px"><label>NET Name <span class="req">*</span></label><input id="eName" placeholder="e.g., Tuesday Evening Skywarn Net" /></div>
+    <div style="margin-bottom:14px"><label>Description (Optional)</label><textarea id="eDesc" rows="2" placeholder="A short summary of what this NET is about."></textarea></div>
+    <div class="grid">
+      <div><label>Type of NET</label><select id="eType"><option>Skywarn</option><option>Technical</option><option>Emergency / ARES</option><option>Social / Ragchew</option><option>Training</option><option>Traffic</option><option>Other</option></select></div>
+      <div><label>Net Control Call Sign <span class="req">*</span></label><input id="eNcs" maxlength="8" placeholder="e.g., K9TWX" style="text-transform:uppercase" /></div>
+      <div><label>Check-in Entry</label><select id="eMode"><option value="roster">Roster lookup (recommended)</option><option value="free">Free entry only</option></select></div>
+    </div>
+
+    <h3>Net Schedule</h3>
+    <div class="grid">
+      <div><label>Frequency</label><select id="eFreq"><option>Weekly</option><option>Daily</option><option>Monthly</option><option>As needed</option></select></div>
+      <div><label>Day of Week</label><select id="eDay"></select></div>
+      <div><label>Time</label><input id="eTime" type="time" /></div>
+      <div><label>Time Zone</label><select id="eTz"></select></div>
+    </div>
+
+    <h3>Repeater / Frequency</h3>
+    <div class="grid">
+      <div><label>Repeater Name</label><input id="eRName" placeholder="e.g., Spring Mountain" /></div>
+      <div><label>Downlink Freq (MHz)</label><input id="eRFreq" placeholder="e.g., 145.130" /></div>
+      <div><label>Offset (MHz)</label><input id="eROff" placeholder="e.g., -0.600" /></div>
+      <div><label>PL Tone (Hz)</label><input id="eRTone" placeholder="e.g., 156.7" /></div>
+    </div>
+
+    <h3>Script</h3>
+    <div style="margin-bottom:14px"><label>Preamble (read at the start)</label><textarea id="ePre" rows="5" placeholder="This is K9TWX, net control for the Tuesday Evening Skywarn Net…"></textarea></div>
+    <div style="margin-bottom:14px"><label>Standing Announcements (one per line; copied into each session, where you can add or remove items)</label><textarea id="eAnn" rows="4" placeholder="Hamfest Saturday at the fairgrounds&#10;VE testing first Monday of the month"></textarea></div>
+    <div><label>Closing (read at the end)</label><textarea id="eClose" rows="3" placeholder="This net is now closed and the repeater is returned to normal use…"></textarea></div>
+
+    <h3 id="rosterSec">Members / Roster</h3>
+    <p class="muted" style="margin-top:-6px">Optional. Stations who check in during a net are added here on their own.</p>
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));align-items:end;margin-bottom:4px">
+      <div><label>Call Sign</label><input id="mCall" maxlength="8" placeholder="W9ABC" style="text-transform:uppercase" /></div>
+      <div><label>Name</label><input id="mName" placeholder="Sam" /></div>
+      <div><label>Location / County</label><input id="mLoc" placeholder="Peoria" /></div>
+      <div><button data-a="mAdd" style="width:100%">Add Member</button></div>
+    </div>
+    <div class="err" id="mErr"></div>
+    <details style="margin-bottom:12px"><summary>Import from a file or pasted list (merges)</summary>
+      <div style="margin-top:10px"><label>.csv or .txt with one call sign per line, or <code>callsign,name,location</code></label>
+      <input type="file" id="mFile" accept=".csv,.txt,.tsv,text/plain,text/csv" />
+      <textarea id="mPaste" rows="4" placeholder="K9TWX,Kevin,Chicago&#10;W9ABC,Sam,Peoria" style="margin-top:8px"></textarea>
+      <button class="small" data-a="mImport" style="margin-top:8px">Import pasted list</button></div>
+    </details>
+    <div class="muted" id="mInfo" style="margin-bottom:6px"></div>
+    <div class="tablewrap" style="max-height:360px;overflow-y:auto"><table><thead><tr><th>Call Sign</th><th>Name</th><th>Location</th><th>Nets</th><th></th></tr></thead><tbody id="mBody"></tbody></table></div>
+    <div class="row" style="margin-top:10px"><button class="small" data-a="mDownload">Download CSV</button><button class="small danger" data-a="mClear">Remove All</button></div>
+
+    <div class="row" style="margin-top:28px;border-top:1px solid var(--line);padding-top:18px">
+      <button class="danger" id="btnDelNet" data-a="deleteNet">Delete Net</button>
+      <span class="spacer"></span>
+      <button data-a="cancelEdit">Cancel</button>
+      <button class="primary" data-a="saveNet">Save Net</button>
+    </div>
+    <div class="err" id="eErr" style="text-align:right"></div>
+  </div>
+</section>
+
+<!-- ================= SESSION ================= -->
+<section id="vSession" class="hidden">
+  <div class="sbar">
     <div>
-      <h2 id="vName" style="margin-bottom:4px"></h2>
-      <div class="muted"><span id="vBadge" class="badge live">LIVE</span> <span id="vMeta"></span></div>
+      <h2 id="sName"></h2>
+      <div class="muted"><span id="sBadge" class="pill live">LIVE</span> <span id="sMeta"></span></div>
     </div>
     <div class="stats">
-      <div class="stat"><b id="sCount">0</b><span>Check-ins</span></div>
-      <div class="stat"><b id="sTraffic">0</b><span>Traffic</span></div>
-      <div class="stat"><b id="sClock">0:00</b><span>Elapsed</span></div>
+      <div class="stat"><b id="stCount">0</b><span>Check-ins</span></div>
+      <div class="stat"><b id="stTraffic">0</b><span>Traffic</span></div>
+      <div class="stat"><b id="stNotes">0</b><span>Notes</span></div>
+      <div class="stat"><b id="stClock">0:00</b><span>Elapsed</span></div>
+    </div>
+    <div class="row">
+      <button data-a="exportCsv">Export CSV</button>
+      <button data-a="print">Print / PDF</button>
+      <button class="danger" id="btnEnd" data-a="endNet">End Net</button>
+      <button id="btnReopen" data-a="reopen">Reopen</button>
     </div>
   </div>
 
-  <div class="card noprint" id="entryCard">
-    <div class="callin">
-      <label id="callLabel">Call Sign</label>
-      <input id="callInput" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="8" placeholder="Type call sign…" />
-      <div id="suggest" class="hidden"></div>
-    </div>
-    <div class="err" id="callErr"></div>
-    <div class="grid" style="margin-top:8px">
-      <div><label>Name</label><input id="fName" /></div>
-      <div><label>Location / County</label><input id="fLoc" /></div>
-      <div><label>Check-in Type</label><select id="fKind"><option>Regular</option><option>Visitor</option><option>Short Time</option><option>Relay</option><option>Mobile</option></select></div>
-      <div><label>Traffic</label><select id="fTraffic"><option>None</option><option>Routine</option><option>Priority</option><option>Emergency</option></select></div>
-    </div>
-    <div class="grid" id="wxRow"><div style="grid-column:1/-1"><label>Comments / Weather Report</label><input id="fNote" placeholder="e.g., 1&quot; hail, 3 mi N of town" /></div></div>
-    <div class="row"><button class="primary" id="btnAdd">Log Check-in (Enter)</button><span class="muted" id="modeHint"></span></div>
-  </div>
-
-  <h3>Check-in Log</h3>
-  <div class="tablewrap card" style="padding:8px">
-    <table>
-      <thead><tr><th>#</th><th>Time</th><th>Call</th><th>Name</th><th>Location</th><th>Type</th><th>Traffic</th><th>Notes</th><th class="noprint"></th></tr></thead>
-      <tbody id="logBody"></tbody>
-    </table>
-    <div class="muted" id="emptyLog" style="padding:16px">No check-ins yet.</div>
-  </div>
-
-  <div class="row noprint" style="margin-top:20px">
-    <button id="btnCsv">Export CSV</button>
-    <button id="btnPrint">Print / PDF</button>
-    <button id="btnRosterDl" class="hidden">Download Roster</button>
-    <span style="flex:1"></span>
-    <button id="btnClose" class="danger">Close NET</button>
-    <button id="btnReopen" class="hidden">Reopen NET</button>
-  </div>
-</section>
-
-<!-- ============ ROSTER VIEW ============ -->
-<section id="rosterView" class="hidden">
-  <h2>Group Roster</h2>
-  <div class="card">
-    <form id="rosterForm" autocomplete="off">
-      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));align-items:end">
-        <div><label>Call Sign <span class="req">*</span></label><input id="rCall" required maxlength="8" placeholder="e.g., W9ABC" style="text-transform:uppercase" /></div>
-        <div><label>Name</label><input id="rName" placeholder="e.g., Sam" /></div>
-        <div><label>Location / County</label><input id="rLoc" placeholder="e.g., Peoria" /></div>
-        <div><button class="primary" type="submit" style="width:100%">Add Member</button></div>
+  <div class="cols">
+    <div class="col" id="colRoll">
+      <h4>Roll Call</h4>
+      <input id="callInput" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="8" placeholder="Call sign…" />
+      <div class="err" id="callErr"></div>
+      <div class="kbd"><kbd>Enter</kbd> check in · <kbd>↑</kbd><kbd>↓</kbd> pick · <kbd>/</kbd> jump here</div>
+      <div id="rollWrap">
+        <h4 style="margin-top:14px"><span id="rollTitle">Not yet checked in</span><span id="rollCount"></span></h4>
+        <div class="list" id="rollList"></div>
       </div>
-      <div class="err" id="rErr"></div>
-    </form>
-    <details style="margin:0 0 16px"><summary>Import from file or pasted list (merges into roster)</summary>
-      <div style="margin-top:10px"><label>.csv or .txt — one call sign per line, or <code>callsign,name,location</code></label>
-      <input type="file" id="rosterFile" accept=".csv,.txt,.tsv,text/plain,text/csv" />
-      <textarea id="rosterPaste" rows="4" placeholder="K9TWX,Kevin,Chicago&#10;W9ABC,Sam,Peoria" style="margin-top:8px"></textarea>
-      <button type="button" id="rosterLoad" class="small" style="margin-top:8px">Import pasted list</button></div>
-    </details>
-    <div class="muted" id="rosterInfo" style="margin-bottom:8px"></div>
-    <div class="tablewrap"><table><thead><tr><th>Call Sign</th><th>Name</th><th>Location</th><th></th></tr></thead><tbody id="rosterBody"></tbody></table></div>
-    <div class="row" style="margin-top:16px"><button id="rDownload" class="small">Download CSV</button><button id="rClear" class="small danger">Clear All</button><span style="flex:1"></span><button id="rDone" class="primary">Done</button></div>
+    </div>
+
+    <div class="col">
+      <h4><span>Checked In</span><span style="text-transform:none;letter-spacing:0;font-weight:400">Click a station for details &amp; notes · ✓ = had their turn</span></h4>
+      <div id="logList"></div>
+      <div id="logEmpty" class="muted" style="padding:10px">No check-ins yet. Type a call sign or click a name on the roll call list.</div>
+    </div>
+
+    <div class="col side">
+      <div class="tabs">
+        <button data-a="tab" data-v="notes" id="tabBtnNotes">Notes</button>
+        <button data-a="tab" data-v="ann" id="tabBtnAnn">Announcements</button>
+        <button data-a="tab" data-v="script" id="tabBtnScript">Script</button>
+      </div>
+      <div id="tabNotes">
+        <div id="stationBox"></div>
+        <div class="target" id="noteTarget"></div>
+        <textarea id="noteInput" rows="3"></textarea>
+        <div class="kbd"><kbd>Enter</kbd> save · <kbd>Shift</kbd>+<kbd>Enter</kbd> new line · start with <kbd>@CALL</kbd> to tag a station · <kbd>Esc</kbd> general note</div>
+        <div class="row between" style="margin-top:12px"><span class="muted" id="noteListTitle"></span><button class="small" id="noteFilterBtn" data-a="toggleNoteFilter"></button></div>
+        <div id="noteList"></div>
+      </div>
+      <div id="tabAnn" class="hidden">
+        <div id="annList"></div>
+        <input id="annInput" placeholder="Add an announcement and press Enter" style="margin-top:10px" />
+      </div>
+      <div id="tabScript" class="hidden"><div id="scriptBox"></div></div>
+    </div>
   </div>
 </section>
 
-<!-- ============ HISTORY VIEW ============ -->
-<section id="histView" class="hidden">
-  <h2>Past Nets</h2>
-  <div class="card"><div id="histList"></div></div>
+<!-- ================= HISTORY ================= -->
+<section id="vHistory" class="narrow hidden">
+  <div class="row between" style="margin-bottom:16px"><h2 id="hTitle"></h2><div class="row"><button data-a="home">Back</button><button class="primary" id="hStart" data-a="startNet">Start Net</button></div></div>
+  <div class="card tablewrap"><table><thead><tr><th>Date</th><th>Time</th><th>NCS</th><th>Check-ins</th><th>Notes</th><th></th></tr></thead><tbody id="hBody"></tbody></table>
+  <div id="hEmpty" class="muted hidden" style="padding:10px">No sessions yet.</div></div>
 </section>
 </main>
-<footer>Data is stored only in this browser (localStorage). Export CSV to keep a copy.</footer>
+<footer>Data is stored only in this browser. Export CSV after each net, and use Download CSV in Edit Net to back up the roster.</footer>
+<div id="printView"></div>
 
 <script>
 (() => {
 'use strict';
 const $ = id => document.getElementById(id);
 const CALL_RE = /^[A-Z0-9]{4,8}$/;
-const KEY = 'netcontrol.v1';
-const store = (() => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } })();
-store.nets = store.nets || []; store.roster = store.roster || []; store.currentId = store.currentId || null;
-const save = () => { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch {} };
-const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const KEY = 'netcontrol.v2';
+const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const KINDS = ['Regular','Visitor','Short Time','Mobile','Relay','Portable'];
+const TRAFFIC = ['None','Routine','Priority','Emergency'];
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const fmtTime = iso => new Date(iso).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-const cur = () => store.nets.find(n => n.id === store.currentId);
+const fmtT = iso => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+const fmtD = iso => new Date(iso).toLocaleDateString([], { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+const localTz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return 'America/New_York'; } })();
+const opts = (list, sel) => list.map(v => `<option${v === sel ? ' selected' : ''}>${esc(v)}</option>`).join('');
 
-function show(view) { ['setupView','netView','histView','rosterView'].forEach(v => $(v).classList.toggle('hidden', v !== view)); }
-
-/* ---------- Setup ---------- */
-document.querySelectorAll('input[name=mode]').forEach(r => r.addEventListener('change', () => {
-  const roster = document.querySelector('input[name=mode]:checked').value === 'roster';
-  $('modeFree').classList.toggle('sel', !roster); $('modeRoster').classList.toggle('sel', roster);
-  $('rosterBox').classList.toggle('hidden', !roster);
-}));
-
-function parseRoster(text) {
+/* ---------------- Data ---------------- */
+function newNet(o = {}) {
+  return { id: uid(), name: '', desc: '', type: 'Skywarn', ncs: '', mode: 'roster',
+    schedule: { freq: 'Weekly', day: 'Tuesday', time: '19:00', tz: localTz },
+    repeater: { name: '', freq: '', off: '', tone: '' },
+    preamble: '', closing: '', announcements: '', members: [], sessions: [], ...o };
+}
+function upsertMember(n, m) {
+  const call = String(m.call || '').toUpperCase();
+  if (!CALL_RE.test(call)) return null;
+  let ex = n.members.find(x => x.call === call);
+  if (ex) { if (!ex.name && m.name) ex.name = m.name; if (!ex.loc && m.loc) ex.loc = m.loc; return ex; }
+  ex = { call, name: m.name || '', loc: m.loc || '' }; n.members.push(ex); return ex;
+}
+function migrate() {
+  const st = { nets: [], active: null };
+  let old; try { old = JSON.parse(localStorage.getItem('netcontrol.v1')); } catch {}
+  if (!old) return st;
+  const byName = new Map();
+  for (const o of (old.nets || []).slice().reverse()) {
+    let n = byName.get(o.name);
+    if (!n) { n = newNet({ name: o.name || 'Untitled Net', type: o.type || 'Skywarn', ncs: o.ncs || '', desc: o.desc || '', mode: o.mode || 'roster', repeater: { name: '', freq: '', off: '', tone: '', ...(o.repeater || {}) } }); byName.set(o.name, n); st.nets.push(n); }
+    const s = { id: uid(), start: o.start, end: o.end || o.start, ncs: o.ncs, checkins: [], notes: [], announcements: [] };
+    for (const c of o.checkins || []) {
+      s.checkins.push({ id: c.id || uid(), time: c.time, call: c.call, name: c.name || '', loc: c.loc || '', kind: c.kind || 'Regular', traffic: c.traffic || 'None', done: true });
+      if (c.note) s.notes.push({ id: uid(), time: c.time, call: c.call, text: c.note });
+      upsertMember(n, c);
+    }
+    n.sessions.unshift(s);
+  }
+  if (old.roster && old.roster.length) {
+    if (!st.nets.length) st.nets.push(newNet({ name: 'My Net' }));
+    for (const r of old.roster) for (const n of st.nets) upsertMember(n, r);
+  }
+  return st;
+}
+const S = (() => { try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.nets)) return s; } catch {} return migrate(); })();
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { alert('Could not save to browser storage: ' + e.message); } };
+const net = id => S.nets.find(n => n.id === id);
+function attendance(n) {
+  const m = new Map(); let total = 0;
+  for (const s of n.sessions) { if (!s.end) continue; total++; new Set(s.checkins.map(c => c.call)).forEach(c => m.set(c, (m.get(c) || 0) + 1)); }
+  return { m, total };
+}
+function parseList(text) {
   const out = new Map();
-  text.split(/\r?\n/).forEach((line, i) => {
-    const parts = line.split(/[,;\t]/).map(s => s.trim().replace(/^"|"$/g, ''));
-    const call = (parts[0] || '').toUpperCase();
-    if (!CALL_RE.test(call) || (i === 0 && /^CALL/.test(call) && /name|loc/i.test(line))) return; // skip header/blank/junk
-    if (!out.has(call)) out.set(call, { call, name: parts[1] || '', loc: parts[2] || '' });
+  text.split(/\r?\n/).forEach(line => {
+    const p = line.split(/[,;\t]/).map(x => x.trim().replace(/^"|"$/g, ''));
+    const call = (p[0] || '').toUpperCase();
+    if (!CALL_RE.test(call) || (/^CALL/.test(call) && /name|loc/i.test(line))) return;
+    if (!out.has(call)) out.set(call, { call, name: p[1] || '', loc: p[2] || '' });
   });
   return [...out.values()];
 }
-let rosterReturn = 'setupView';
-function renderRoster() {
-  const r = store.roster.slice().sort((a, b) => a.call.localeCompare(b.call));
-  $('rosterInfo').textContent = `${r.length} member${r.length === 1 ? '' : 's'} in roster.`;
-  $('rosterSummary').textContent = `${r.length} call sign${r.length === 1 ? '' : 's'} in roster.`;
-  $('rosterBody').innerHTML = r.map(m => `<tr><td class="call">${esc(m.call)}</td><td>${esc(m.name)}</td><td>${esc(m.loc)}</td><td><button class="small" data-rm="${m.call}">✕</button></td></tr>`).join('');
+function schedText(n) {
+  const sc = n.schedule || {}; let t = '';
+  if (sc.time) { const [h, m] = sc.time.split(':'); const d = new Date(); d.setHours(+h, +m, 0); t = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
+  const day = sc.freq === 'Weekly' ? sc.day + 's' : sc.freq;
+  return [day, t && 'at ' + t, sc.tz].filter(Boolean).join(' ');
 }
-function addMembers(list) {
-  let added = 0;
-  for (const m of list) {
-    const ex = store.roster.find(r => r.call === m.call);
-    if (ex) { ex.name ||= m.name; ex.loc ||= m.loc; } else { store.roster.push(m); added++; }
-  }
-  save(); renderRoster(); return added;
+const repText = r => [r.name, r.freq && r.freq + ' MHz', r.off, r.tone && 'PL ' + r.tone].filter(Boolean).join(' · ');
+
+/* ---------------- UI state ---------------- */
+const ui = { netId: null, sessId: null, sel: null, tab: 'notes', act: -1, items: [], allNotes: false, draft: null, returnTo: 'home' };
+const VIEWS = ['vHome', 'vEdit', 'vSession', 'vHistory'];
+const onSession = () => !$('vSession').classList.contains('hidden');
+function show(v) { VIEWS.forEach(x => $(x).classList.toggle('hidden', x !== v)); window.scrollTo(0, 0); renderHeader(); }
+function curSess() { const n = net(ui.netId); return [n, n && n.sessions.find(s => s.id === ui.sessId)]; }
+function activePair() {
+  if (!S.active) return [];
+  const n = net(S.active.netId), s = n && n.sessions.find(x => x.id === S.active.sessId);
+  if (!s || s.end) { S.active = null; save(); return []; }
+  return [n, s];
 }
-const setRoster = list => { const n = addMembers(list); $('rosterInfo').textContent = `Imported ${list.length} call signs (${n} new). ${store.roster.length} total.`; };
-$('rosterFile').addEventListener('change', async e => { const f = e.target.files[0]; if (f) setRoster(parseRoster(await f.text())); e.target.value = ''; });
-$('rosterLoad').addEventListener('click', () => { setRoster(parseRoster($('rosterPaste').value)); $('rosterPaste').value = ''; });
-$('rosterForm').addEventListener('submit', e => {
-  e.preventDefault();
-  const call = $('rCall').value.trim().toUpperCase();
-  if (!CALL_RE.test(call)) { $('rErr').textContent = 'Call sign must be 4–8 letters and numbers.'; return; }
-  if (store.roster.some(r => r.call === call)) { $('rErr').textContent = `${call} is already in the roster.`; return; }
-  $('rErr').textContent = '';
-  addMembers([{ call, name: $('rName').value.trim(), loc: $('rLoc').value.trim() }]);
-  $('rosterForm').reset(); $('rCall').focus();
-});
-$('rCall').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); $('rErr').textContent = ''; });
-$('rosterBody').addEventListener('click', e => { const c = e.target.dataset.rm; if (c) { store.roster = store.roster.filter(r => r.call !== c); save(); renderRoster(); } });
-$('rClear').addEventListener('click', () => { if (confirm('Remove everyone from the roster?')) { store.roster = []; save(); renderRoster(); } });
-$('rDownload').addEventListener('click', () => download('roster.csv', csv([['callsign','name','location'], ...store.roster.map(r => [r.call, r.name, r.loc])])));
-function openRoster(back) { rosterReturn = back; renderRoster(); show('rosterView'); }
-$('btnRoster').addEventListener('click', () => openRoster(cur() ? 'netView' : 'setupView'));
-$('goRoster').addEventListener('click', () => openRoster('setupView'));
-$('rDone').addEventListener('click', () => { if (rosterReturn === 'netView') openNet(); else show('setupView'); renderRoster(); });
-renderRoster();
+function renderHeader() {
+  const [n, s] = activePair(); const b = $('liveBtn');
+  b.classList.toggle('hidden', !n || (onSession() && ui.sessId === s.id));
+  if (n) b.textContent = '● LIVE: ' + n.name;
+}
 
-$('setupForm').addEventListener('submit', e => {
-  e.preventDefault();
-  const ncs = $('ncs').value.trim().toUpperCase();
-  if (!CALL_RE.test(ncs)) { alert('Net control call sign must be 4–8 letters/numbers.'); return; }
-  const mode = document.querySelector('input[name=mode]:checked').value;
-  if (mode === 'roster' && !store.roster.length) { alert('Add people to the roster first (Manage Roster), or choose Free Entry.'); return; }
-  const net = { id: uid(), name: $('netName').value.trim(), desc: $('netDesc').value.trim(), type: $('netType').value, ncs, mode,
-    repeater: { name: $('repName').value, freq: $('repFreq').value, off: $('repOff').value, tone: $('repTone').value },
-    start: new Date().toISOString(), end: null, checkins: [] };
-  store.nets.unshift(net); store.currentId = net.id; save(); openNet();
-});
-$('btnNew').addEventListener('click', () => { $('setupForm').reset(); $('cancelSetup').classList.toggle('hidden', !cur()); show('setupView'); });
-$('cancelSetup').addEventListener('click', () => cur() ? openNet() : show('setupView'));
+/* ---------------- Home ---------------- */
+function goHome() {
+  const [an] = activePair();
+  $('homeEmpty').classList.toggle('hidden', S.nets.length > 0);
+  $('netCards').innerHTML = S.nets.map(n => {
+    const last = n.sessions.find(s => s.end);
+    const live = an && an.id === n.id;
+    return `<div class="netcard">
+      <div class="row between"><h2>${esc(n.name)}</h2><span class="pill">${esc(n.type)}</span></div>
+      <div class="muted">${esc(schedText(n))}</div>
+      ${repText(n.repeater) ? `<div class="muted">📡 ${esc(repText(n.repeater))}</div>` : ''}
+      <div class="muted">NCS ${esc(n.ncs)} · ${n.members.length} members · ${n.sessions.length} sessions${last ? ' · last ' + fmtD(last.start) : ''}</div>
+      <div class="row" style="margin-top:auto">
+        ${live ? `<button class="live" data-a="resume">● Resume Live Net</button>` : `<button class="primary" data-a="startNet" data-id="${n.id}">Start Net</button>`}
+        <button data-a="editNet" data-id="${n.id}">Edit</button>
+        <button data-a="rosterNet" data-id="${n.id}">Roster (${n.members.length})</button>
+        <button data-a="history" data-id="${n.id}">History</button>
+      </div></div>`;
+  }).join('');
+  show('vHome');
+}
 
-/* ---------- Net view ---------- */
-let timer;
-function openNet() {
-  const n = cur(); if (!n) return show('setupView');
-  show('netView'); $('vName').textContent = n.name;
-  const r = n.repeater;
-  $('vMeta').textContent = [n.type, `NCS ${n.ncs}`, r.name, r.freq && r.freq + ' MHz', r.off, r.tone && r.tone + ' Hz', new Date(n.start).toLocaleDateString()].filter(Boolean).join(' · ');
-  $('modeHint').textContent = n.mode === 'roster' ? `Roster mode: ${store.roster.length} call signs. Type any part of a call sign.` : 'Free entry: 4–8 letters/numbers.';
-  $('callLabel').textContent = n.mode === 'roster' ? 'Call Sign (type to search roster)' : 'Call Sign';
-  $('btnRosterDl').classList.toggle('hidden', n.mode !== 'roster');
-  $('wxRow').classList.toggle('hidden', false);
-  renderNet(); clearInterval(timer); timer = setInterval(tick, 1000); tick(); $('callInput').focus();
+/* ---------------- Edit net ---------------- */
+let tzList = []; try { tzList = Intl.supportedValuesOf('timeZone'); } catch {}
+if (!tzList.length) tzList = ['America/New_York','America/Chicago','America/Denver','America/Phoenix','America/Los_Angeles','America/Anchorage','Pacific/Honolulu','UTC'];
+function openEdit(n, isNew, returnTo) {
+  ui.draft = JSON.parse(JSON.stringify(n)); ui.returnTo = returnTo || 'home';
+  const d = ui.draft;
+  $('editTitle').textContent = isNew ? 'Create New NET' : 'Edit NET';
+  $('eName').value = d.name; $('eDesc').value = d.desc; $('eType').value = d.type; $('eNcs').value = d.ncs; $('eMode').value = d.mode;
+  $('eFreq').value = d.schedule.freq; $('eDay').innerHTML = opts(DAYS, d.schedule.day); $('eTime').value = d.schedule.time;
+  $('eTz').innerHTML = opts(tzList.includes(d.schedule.tz) ? tzList : [d.schedule.tz, ...tzList], d.schedule.tz);
+  $('eRName').value = d.repeater.name; $('eRFreq').value = d.repeater.freq; $('eROff').value = d.repeater.off; $('eRTone').value = d.repeater.tone;
+  $('ePre').value = d.preamble; $('eAnn').value = d.announcements; $('eClose').value = d.closing;
+  $('btnDelNet').classList.toggle('hidden', isNew);
+  ['mCall','mName','mLoc','mPaste'].forEach(id => $(id).value = ''); $('mErr').textContent = ''; $('eErr').textContent = '';
+  renderMembers(); show('vEdit'); $('eName').focus();
+}
+function renderMembers() {
+  const d = ui.draft, { m, total } = attendance(d);
+  const list = d.members.slice().sort((a, b) => a.call.localeCompare(b.call));
+  $('mInfo').textContent = `${list.length} member${list.length === 1 ? '' : 's'}`;
+  $('mBody').innerHTML = list.map(x => `<tr><td><b>${esc(x.call)}</b></td><td>${esc(x.name)}</td><td>${esc(x.loc)}</td><td class="muted">${total ? (m.get(x.call) || 0) + ' of ' + total : '–'}</td><td><button class="icon" data-a="mDel" data-call="${esc(x.call)}" title="Remove">✕</button></td></tr>`).join('');
+}
+function addMemberFromForm() {
+  const call = $('mCall').value.trim().toUpperCase();
+  if (!CALL_RE.test(call)) { $('mErr').textContent = 'Call sign must be 4–8 letters and numbers.'; return; }
+  if (ui.draft.members.some(x => x.call === call)) { $('mErr').textContent = `${call} is already a member.`; return; }
+  upsertMember(ui.draft, { call, name: $('mName').value.trim(), loc: $('mLoc').value.trim() });
+  ['mCall','mName','mLoc'].forEach(id => $(id).value = ''); $('mErr').textContent = ''; renderMembers(); $('mCall').focus();
+}
+function importMembers(list) {
+  const before = ui.draft.members.length; list.forEach(m => upsertMember(ui.draft, m)); renderMembers();
+  $('mInfo').textContent = `Imported ${list.length} call signs (${ui.draft.members.length - before} new). ${ui.draft.members.length} members.`;
+}
+function saveNet() {
+  const d = ui.draft, name = $('eName').value.trim(), ncs = $('eNcs').value.trim().toUpperCase();
+  if (!name) { $('eErr').textContent = 'NET name is required.'; $('eName').focus(); return; }
+  if (!CALL_RE.test(ncs)) { $('eErr').textContent = 'Net control call sign must be 4–8 letters and numbers.'; $('eNcs').focus(); return; }
+  const def = { name, ncs, desc: $('eDesc').value.trim(), type: $('eType').value, mode: $('eMode').value,
+    schedule: { freq: $('eFreq').value, day: $('eDay').value, time: $('eTime').value, tz: $('eTz').value },
+    repeater: { name: $('eRName').value.trim(), freq: $('eRFreq').value.trim(), off: $('eROff').value.trim(), tone: $('eRTone').value.trim() },
+    preamble: $('ePre').value, announcements: $('eAnn').value, closing: $('eClose').value, members: d.members };
+  let n = net(d.id);
+  if (n) Object.assign(n, def); else { n = newNet({ ...def, id: d.id }); S.nets.push(n); }
+  save();
+  if (ui.returnTo === 'session') { show('vSession'); renderSession(); } else goHome();
+}
+
+/* ---------------- Session ---------------- */
+function startNet(id) {
+  const [an] = activePair();
+  if (an) { if (an.id === id || confirm(`"${an.name}" is still running. Resume it instead?`)) resume(); return; }
+  const n = net(id);
+  const s = { id: uid(), start: new Date().toISOString(), end: null, ncs: n.ncs, checkins: [], notes: [],
+    announcements: n.announcements.split(/\r?\n/).map(t => t.trim()).filter(Boolean).map(text => ({ id: uid(), text, done: false })) };
+  n.sessions.unshift(s); S.active = { netId: n.id, sessId: s.id }; save();
+  openSession(n.id, s.id, n.preamble ? 'script' : 'notes');
+}
+function resume() { const [n, s] = activePair(); if (n) openSession(n.id, s.id); else goHome(); }
+function openSession(netId, sessId, tab) {
+  ui.netId = netId; ui.sessId = sessId; ui.sel = null; ui.allNotes = false; ui.act = -1; ui.tab = tab || 'notes';
+  $('callInput').value = ''; $('callErr').textContent = '';
+  show('vSession'); renderSession(); if (!curSess()[1].end) $('callInput').focus();
+}
+function renderSession() { renderTop(); renderRoll(); renderLog(); renderSide(); renderHeader(); }
+function renderTop() {
+  const [n, s] = curSess(); const closed = !!s.end;
+  $('sName').textContent = n.name;
+  $('sBadge').textContent = closed ? 'CLOSED' : 'LIVE'; $('sBadge').className = 'pill ' + (closed ? 'closed' : 'live');
+  $('sMeta').textContent = [fmtD(s.start), fmtT(s.start) + (closed ? '–' + fmtT(s.end) : ''), 'NCS ' + s.ncs, repText(n.repeater)].filter(Boolean).join(' · ');
+  $('stCount').textContent = s.checkins.length;
+  $('stTraffic').textContent = s.checkins.filter(c => c.traffic !== 'None').length;
+  $('stNotes').textContent = s.notes.length;
+  $('btnEnd').classList.toggle('hidden', closed); $('btnReopen').classList.toggle('hidden', !closed);
+  $('callInput').disabled = closed; $('callInput').placeholder = closed ? 'Net is closed' : 'Call sign…';
+  tick();
 }
 function tick() {
-  const n = cur(); if (!n) return;
-  const s = Math.max(0, Math.floor(((n.end ? new Date(n.end) : new Date()) - new Date(n.start)) / 1000));
-  $('sClock').textContent = s >= 3600 ? `${Math.floor(s/3600)}:${String(Math.floor(s%3600/60)).padStart(2,'0')}h` : `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+  const [, s] = curSess(); if (!s) return;
+  const sec = Math.max(0, Math.floor(((s.end ? new Date(s.end) : new Date()) - new Date(s.start)) / 1000));
+  const mm = String(Math.floor(sec % 3600 / 60)), ss = String(sec % 60).padStart(2, '0');
+  $('stClock').textContent = sec >= 3600 ? `${Math.floor(sec / 3600)}:${mm.padStart(2, '0')}:${ss}` : `${mm}:${ss}`;
 }
-function renderNet() {
-  const n = cur(), closed = !!n.end;
-  $('vBadge').textContent = closed ? 'CLOSED' : 'LIVE'; $('vBadge').className = 'badge ' + (closed ? 'closed' : 'live');
-  $('entryCard').classList.toggle('hidden', closed);
-  $('btnClose').classList.toggle('hidden', closed); $('btnReopen').classList.toggle('hidden', !closed);
-  $('sCount').textContent = n.checkins.length;
-  $('sTraffic').textContent = n.checkins.filter(c => c.traffic !== 'None').length;
-  $('emptyLog').classList.toggle('hidden', n.checkins.length > 0);
-  $('logBody').innerHTML = n.checkins.map((c, i) => `<tr>
-    <td>${i+1}</td><td>${fmtTime(c.time)}</td><td class="call">${esc(c.call)}</td><td>${esc(c.name)}</td><td>${esc(c.loc)}</td>
-    <td>${esc(c.kind)}</td><td>${c.traffic !== 'None' ? `<span class="badge ${c.traffic}">${c.traffic}</span>` : ''}</td><td>${esc(c.note)}</td>
-    <td class="noprint">${closed ? '' : `<button class="small" data-del="${c.id}">✕</button>`}</td></tr>`).join('');
-}
-$('logBody').addEventListener('click', e => {
-  const id = e.target.dataset.del; if (!id) return;
-  const n = cur(); n.checkins = n.checkins.filter(c => c.id !== id); save(); renderNet();
-});
+setInterval(() => { if (onSession()) tick(); }, 1000);
 
-/* ---------- Call sign entry & typeahead ---------- */
-let sugg = [], act = -1;
-const ci = $('callInput');
-function hilite(call, q) {
-  const i = call.indexOf(q); if (i < 0 || !q) return esc(call);
-  return esc(call.slice(0, i)) + '<mark>' + esc(q) + '</mark>' + esc(call.slice(i + q.length));
+function hilite(text, q) {
+  const i = q ? text.indexOf(q) : -1; if (i < 0) return esc(text);
+  return esc(text.slice(0, i)) + '<mark>' + esc(q) + '</mark>' + esc(text.slice(i + q.length));
 }
-function search(q) {
-  const taken = new Set(cur().checkins.map(c => c.call));
-  const scored = [];
-  for (const r of store.roster) {
-    let s = r.call.startsWith(q) ? 0 : r.call.endsWith(q) ? 1 : r.call.includes(q) ? 2 : -1; // prefix, suffix, anywhere
-    if (s < 0 && r.name && r.name.toUpperCase().includes(q)) s = 3;
-    if (s >= 0) scored.push({ r, s: s + (taken.has(r.call) ? 10 : 0), taken: taken.has(r.call) });
+function buildItems(n, s, q) {
+  const inSet = new Set(s.checkins.map(c => c.call)), { m: att } = attendance(n);
+  const ms = [];
+  for (const mem of n.members) {
+    if (inSet.has(mem.call)) continue;
+    let r = 0;
+    if (q) { r = mem.call.startsWith(q) ? 0 : mem.call.endsWith(q) ? 1 : mem.call.includes(q) ? 2 : (mem.name && mem.name.toUpperCase().includes(q)) ? 3 : -1; if (r < 0) continue; }
+    ms.push({ t: 'm', call: mem.call, mem, r, a: att.get(mem.call) || 0 });
   }
-  return scored.sort((a, b) => a.s - b.s || a.r.call.localeCompare(b.r.call)).slice(0, 12);
+  ms.sort((x, y) => x.r - y.r || y.a - x.a || x.call.localeCompare(y.call));
+  const items = [];
+  if (q && inSet.has(q)) items.push({ t: 'in', call: q });
+  items.push(...ms);
+  if (q && CALL_RE.test(q) && !inSet.has(q) && !n.members.some(x => x.call === q)) items.push({ t: 'new', call: q });
+  return items;
 }
-function renderSuggest() {
-  const n = cur(); const q = ci.value.trim().toUpperCase();
-  const box = $('suggest');
-  if (n.mode !== 'roster' || !q) { box.classList.add('hidden'); sugg = []; return; }
-  sugg = search(q);
-  const exact = store.roster.some(r => r.call === q);
-  let html = sugg.map((m, i) => `<div class="sg ${i === act ? 'act' : ''}" data-i="${i}"><b>${hilite(m.r.call, q)}</b><span class="muted">${esc(m.r.name)} ${esc(m.r.loc)} ${m.taken ? '· already checked in' : ''}</span></div>`).join('');
-  if (CALL_RE.test(q) && !exact) html += `<div class="sg add ${act === sugg.length ? 'act' : ''}" data-add="1"><b>${esc(q)}</b><span>＋ Add new call sign to roster &amp; check in</span></div>`;
-  if (!html) html = `<div class="sg"><span class="muted">No match. Keep typing (4–8 characters) to add a new call sign.</span></div>`;
-  box.innerHTML = html; box.classList.remove('hidden');
+function renderRoll() {
+  const [n, s] = curSess(), q = $('callInput').value.trim().toUpperCase();
+  const free = n.mode === 'free', closed = !!s.end;
+  $('rollWrap').classList.toggle('hidden', free || closed);
+  if (free || closed) { ui.items = []; return; }
+  const { total } = attendance(n);
+  ui.items = buildItems(n, s, q);
+  if (ui.act >= ui.items.length) ui.act = ui.items.length - 1;
+  const inSet = new Set(s.checkins.map(c => c.call));
+  $('rollTitle').textContent = q ? 'Matches' : 'Not yet checked in';
+  $('rollCount').textContent = q ? '' : n.members.filter(x => !inSet.has(x.call)).length;
+  $('rollList').innerHTML = ui.items.map((it, i) => {
+    const cls = 'ri' + (i === ui.act ? ' act' : '') + (it.t === 'new' ? ' new' : '');
+    if (it.t === 'in') return `<div class="${cls}" data-a="pick" data-call="${esc(it.call)}"><b>${esc(it.call)}</b><span class="nm">already checked in. Select</span></div>`;
+    if (it.t === 'new') return `<div class="${cls}" data-a="rollIn" data-call="${esc(it.call)}"><b>＋ ${esc(it.call)}</b><span class="nm">New station: check in &amp; add to roster</span></div>`;
+    return `<div class="${cls}" data-a="rollIn" data-call="${esc(it.call)}"><b>${hilite(it.call, q)}</b><span class="nm">${esc([it.mem.name, it.mem.loc].filter(Boolean).join(' · '))}</span>${total ? `<span class="muted" title="Nets attended">${it.a}/${total}</span>` : ''}</div>`;
+  }).join('') || `<div class="muted" style="padding:8px">${q ? 'No match. Type the full call sign (4–8 characters) to add a new station.' : n.members.length ? 'Everyone on the roster has checked in.' : 'No members yet. Type call signs as stations check in; they will be remembered for next week.'}</div>`;
+  const a = $('rollList').querySelector('.act'); if (a) a.scrollIntoView({ block: 'nearest' });
 }
-ci.addEventListener('input', () => { ci.value = ci.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); act = -1; $('callErr').textContent = ''; renderSuggest(); });
-ci.addEventListener('keydown', e => {
-  const total = sugg.length + ($('suggest').querySelector('.add') ? 1 : 0);
-  if (e.key === 'ArrowDown' && total) { e.preventDefault(); act = (act + 1) % total; renderSuggest(); }
-  else if (e.key === 'ArrowUp' && total) { e.preventDefault(); act = (act - 1 + total) % total; renderSuggest(); }
-  else if (e.key === 'Escape') { $('suggest').classList.add('hidden'); }
-  else if (e.key === 'Enter') { e.preventDefault(); submitEntry(); }
-});
-$('suggest').addEventListener('mousedown', e => {
-  e.preventDefault();
-  const el = e.target.closest('.sg'); if (!el) return;
-  if (el.dataset.add) { act = sugg.length; submitEntry(); } else { pick(sugg[+el.dataset.i].r); }
-});
-function pick(r) { ci.value = r.call; $('fName').value = r.name || ''; $('fLoc').value = r.loc || ''; $('suggest').classList.add('hidden'); act = -1; $('fName').focus(); }
+function renderLog() {
+  const [, s] = curSess();
+  const notesBy = new Map(); s.notes.forEach(x => x.call && notesBy.set(x.call, (notesBy.get(x.call) || 0) + 1));
+  const next = s.end ? null : s.checkins.find(c => !c.done);
+  $('logEmpty').classList.toggle('hidden', s.checkins.length > 0);
+  $('logList').innerHTML = s.checkins.map((c, i) => {
+    const nc = notesBy.get(c.call) || 0;
+    return `<div class="ci${ui.sel === c.call ? ' sel' : ''}${c.done ? ' done' : ''}" data-a="select" data-call="${esc(c.call)}">
+      <span class="num">${i + 1}</span>
+      <div class="who"><b>${esc(c.call)}</b>${next === c ? '<span class="pill next">NEXT</span> ' : ''}${c.kind !== 'Regular' ? `<span class="pill">${esc(c.kind)}</span> ` : ''}${c.traffic !== 'None' ? `<span class="pill ${c.traffic}">${c.traffic} traffic</span>` : ''}
+        <div class="muted">${esc([c.name, c.loc].filter(Boolean).join(' · ')) || '&nbsp;'}</div></div>
+      <span class="muted" title="Notes">${nc ? '📝 ' + nc : ''}</span>
+      <span class="muted">${fmtT(c.time)}</span>
+      <button class="icon${c.done ? ' on' : ''}" data-a="done" data-call="${esc(c.call)}" title="Mark turn done">✓</button>
+      <button class="icon" data-a="delCi" data-call="${esc(c.call)}" title="Remove check-in">✕</button>
+    </div>`;
+  }).join('');
+  const sel = $('logList').querySelector('.sel'); if (sel) sel.scrollIntoView({ block: 'nearest' });
+}
+const TABS = { notes: 'Notes', ann: 'Ann', script: 'Script' };
+function renderSide() {
+  const [n, s] = curSess();
+  Object.entries(TABS).forEach(([t, k]) => { $('tab' + k).classList.toggle('hidden', ui.tab !== t); $('tabBtn' + k).classList.toggle('on', ui.tab === t); });
+  const doneA = s.announcements.filter(a => a.done).length;
+  $('tabBtnAnn').textContent = `Announcements${s.announcements.length ? ` ${doneA}/${s.announcements.length}` : ''}`;
+  $('tabBtnNotes').textContent = `Notes${s.notes.length ? ' ' + s.notes.length : ''}`;
 
-function submitEntry() {
-  const n = cur(); if (!n || n.end) return;
-  let call = ci.value.trim().toUpperCase();
-  if (n.mode === 'roster' && act >= 0 && act < sugg.length) { const r = sugg[act].r; call = r.call; $('fName').value ||= r.name || ''; $('fLoc').value ||= r.loc || ''; }
-  else if (n.mode === 'roster' && !store.roster.some(r => r.call === call) && sugg.length === 1 && !CALL_RE.test(call)) { /* fall through to validation */ }
+  const c = ui.sel && s.checkins.find(x => x.call === ui.sel);
+  if (!c) ui.sel = null;
+  $('stationBox').innerHTML = c ? `<div class="station">
+      <div class="row between"><b style="font-size:20px;letter-spacing:1px">${esc(c.call)}</b><span class="muted">checked in ${fmtT(c.time)}</span><button class="icon" data-a="deselect" title="Close">✕</button></div>
+      <div class="grid">
+        <input id="stName" value="${esc(c.name)}" placeholder="Name" />
+        <input id="stLoc" value="${esc(c.loc)}" placeholder="Location / County" />
+        <select id="stKind" title="Check-in type">${opts(KINDS, c.kind)}</select>
+        <select id="stTraffic" title="Traffic">${TRAFFIC.map(t => `<option value="${t}"${t === c.traffic ? ' selected' : ''}>${t === 'None' ? 'No traffic' : t + ' traffic'}</option>`).join('')}</select>
+      </div></div>` : '';
+  $('noteTarget').innerHTML = c ? `New note for <b>${esc(c.call)}</b>${c.name ? ' (' + esc(c.name) + ')' : ''}` : 'New <b>general net note</b>. Click a station to tag the note to it';
+  $('noteInput').placeholder = c ? `What did ${c.call} report?` : 'General net note…';
+
+  const filtered = c && !ui.allNotes;
+  const list = (filtered ? s.notes.filter(x => x.call === c.call) : s.notes).slice().reverse();
+  $('noteListTitle').textContent = filtered ? `Notes for ${c.call} (${list.length})` : `All notes (${list.length})`;
+  $('noteFilterBtn').classList.toggle('hidden', !c);
+  $('noteFilterBtn').textContent = ui.allNotes && c ? `Only ${c.call}` : 'Show all';
+  $('noteList').innerHTML = list.map(x => `<div class="note${x.call ? ' tagged' : ''}"><div class="nh">
+      ${x.call ? `<span class="tag" data-a="pick" data-call="${esc(x.call)}">${esc(x.call)}</span>` : '<span class="tag gen">GENERAL</span>'}
+      <span class="muted">${fmtT(x.time)}</span><span class="spacer"></span><button class="icon" data-a="delNote" data-id="${x.id}" title="Delete note">✕</button></div>
+      <div class="nt">${esc(x.text)}</div></div>`).join('') || '<div class="muted" style="margin-top:10px">No notes yet.</div>';
+
+  $('annList').innerHTML = s.announcements.map(a => `<label class="ann${a.done ? ' done' : ''}"><input type="checkbox" data-a="annDone" data-id="${a.id}"${a.done ? ' checked' : ''} /><span>${esc(a.text)}</span><button class="icon" data-a="annDel" data-id="${a.id}" title="Remove">✕</button></label>`).join('')
+    || '<div class="muted">No announcements for this session. Add one below, or set standing announcements in Edit Net.</div>';
+
+  const block = (h, t) => t ? `<div class="script-h">${h}</div><div class="script">${esc(t)}</div>` : '';
+  $('scriptBox').innerHTML = (block('Preamble', n.preamble) + block('Closing', n.closing))
+    || `<div class="muted">No script yet. Add a preamble and closing in <a href="#" data-a="editCurrent" style="color:#60a5fa">Edit Net</a>.</div>`;
+}
+
+function setSel(call) { ui.sel = call; ui.allNotes = false; renderLog(); renderSide(); }
+function checkIn(call) {
+  const [n, s] = curSess(); if (s.end) return;
+  call = call.toUpperCase();
   if (!CALL_RE.test(call)) { $('callErr').textContent = 'Call sign must be 4–8 letters and numbers.'; return; }
-  if (n.checkins.some(c => c.call === call) && !confirm(`${call} is already checked in. Log again?`)) return;
-  // add new call to roster in roster mode
-  if (n.mode === 'roster' && !store.roster.some(r => r.call === call)) store.roster.push({ call, name: $('fName').value.trim(), loc: $('fLoc').value.trim() });
-  n.checkins.push({ id: uid(), time: new Date().toISOString(), call, name: $('fName').value.trim(), loc: $('fLoc').value.trim(),
-    kind: $('fKind').value, traffic: $('fTraffic').value, note: $('fNote').value.trim() });
-  save(); renderNet();
-  ['callInput','fName','fLoc','fNote'].forEach(id => $(id).value = ''); $('fKind').selectedIndex = 0; $('fTraffic').selectedIndex = 0;
-  $('suggest').classList.add('hidden'); act = -1; $('callErr').textContent = ''; ci.focus();
+  $('callInput').value = ''; ui.act = -1;
+  if (s.checkins.some(c => c.call === call)) { $('callErr').textContent = `${call} is already checked in. Selected.`; ui.sel = call; ui.tab = 'notes'; renderSession(); $('callInput').focus(); return; }
+  const isNew = !n.members.some(m => m.call === call);
+  const mem = upsertMember(n, { call });
+  s.checkins.push({ id: uid(), time: new Date().toISOString(), call, name: mem.name, loc: mem.loc, kind: 'Regular', traffic: 'None', done: false });
+  save(); ui.sel = call; ui.allNotes = false; ui.tab = 'notes'; $('callErr').textContent = '';
+  renderSession();
+  if (isNew) $('stName').focus(); else $('callInput').focus();
 }
-$('btnAdd').addEventListener('click', submitEntry);
-['fName','fLoc','fNote'].forEach(id => $(id).addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); submitEntry(); } }));
+function submitCall() {
+  const [n, s] = curSess(); if (s.end) return;
+  const q = $('callInput').value.trim().toUpperCase();
+  if (n.mode === 'free') return checkIn(q);
+  const it = ui.act >= 0 ? ui.items[ui.act] : null;
+  if (it) { if (it.t === 'in') { $('callInput').value = ''; ui.act = -1; setSel(it.call); renderRoll(); } else checkIn(it.call); return; }
+  if (!q) return;
+  if (s.checkins.some(c => c.call === q) || n.members.some(m => m.call === q)) return checkIn(q);
+  const ms = ui.items.filter(x => x.t === 'm');
+  if (ms.length === 1) return checkIn(ms[0].call);
+  if (ms.length > 1) { $('callErr').textContent = `${ms.length} matches. Use ↑↓ or keep typing.`; return; }
+  checkIn(q);
+}
+function addNote() {
+  const [, s] = curSess(); let text = $('noteInput').value.trim(); if (!text) return;
+  let call = ui.sel;
+  const m = text.match(/^@([A-Za-z0-9]{4,8})\b[:\s]*([\s\S]*)$/);
+  if (m && m[2].trim()) { call = m[1].toUpperCase(); text = m[2].trim(); }
+  s.notes.push({ id: uid(), time: new Date().toISOString(), call: call || null, text });
+  save(); $('noteInput').value = ''; renderTop(); renderLog(); renderSide(); $('noteInput').focus();
+}
+function endNet() {
+  const [n, s] = curSess();
+  const left = s.announcements.filter(a => !a.done).length;
+  if (!confirm(`End ${n.name}?${left ? `\n\n${left} announcement(s) not marked as read.` : ''}`)) return;
+  s.end = new Date().toISOString(); if (S.active && S.active.sessId === s.id) S.active = null; save();
+  if (n.closing) ui.tab = 'script';
+  renderSession();
+}
+function reopen() {
+  const [n, s] = curSess(), [an] = activePair();
+  if (an) { alert(`"${an.name}" is currently running. End it first.`); return; }
+  s.end = null; S.active = { netId: n.id, sessId: s.id }; save(); renderSession(); $('callInput').focus();
+}
 
-/* ---------- Close / export ---------- */
-$('btnClose').addEventListener('click', () => { if (confirm('Close this NET?')) { cur().end = new Date().toISOString(); save(); renderNet(); tick(); } });
-$('btnReopen').addEventListener('click', () => { cur().end = null; save(); renderNet(); });
+/* ---------------- Export / print ---------------- */
 function download(name, text, type = 'text/csv') {
-  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 const csv = rows => rows.map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
-$('btnCsv').addEventListener('click', () => {
-  const n = cur();
-  download(`${n.name.replace(/\W+/g, '_')}_${n.start.slice(0, 10)}.csv`, csv([
-    ['Net', n.name], ['Type', n.type], ['Net Control', n.ncs], ['Start', n.start], ['End', n.end || ''], [],
+function sessionCsv(n, s) {
+  const inSet = new Set(s.checkins.map(c => c.call));
+  const notesFor = call => s.notes.filter(x => x.call === call).map(x => `[${fmtT(x.time)}] ${x.text}`).join(' | ');
+  const orphan = s.notes.filter(x => x.call && !inSet.has(x.call));
+  return csv([
+    ['Net', n.name], ['Type', n.type], ['Net Control', s.ncs], ['Date', fmtD(s.start)], ['Start', fmtT(s.start)], ['End', s.end ? fmtT(s.end) : ''], ['Repeater', repText(n.repeater)], [],
     ['#', 'Time', 'Call Sign', 'Name', 'Location', 'Type', 'Traffic', 'Notes'],
-    ...n.checkins.map((c, i) => [i + 1, c.time, c.call, c.name, c.loc, c.kind, c.traffic, c.note])]));
-});
-$('btnRosterDl').addEventListener('click', () => $('rDownload').click());
-$('btnPrint').addEventListener('click', () => window.print());
+    ...s.checkins.map((c, i) => [i + 1, fmtT(c.time), c.call, c.name, c.loc, c.kind, c.traffic, notesFor(c.call)]),
+    [], ['General Notes'], ['Time', 'Note'], ...s.notes.filter(x => !x.call).map(x => [fmtT(x.time), x.text]),
+    ...(orphan.length ? [[], ['Notes for stations not checked in'], ['Time', 'Call', 'Note'], ...orphan.map(x => [fmtT(x.time), x.call, x.text])] : []),
+    [], ['Announcements'], ...s.announcements.map(a => [a.text, a.done ? 'Read' : 'Not read'])
+  ]);
+}
+const fileName = (n, s) => `${n.name.replace(/\W+/g, '_')}_${s.start.slice(0, 10)}.csv`;
+function printSession(n, s) {
+  const notesFor = call => s.notes.filter(x => x.call === call).map(x => `${fmtT(x.time)}: ${esc(x.text)}`).join('<br>');
+  const gen = s.notes.filter(x => !x.call);
+  $('printView').innerHTML = `<h1>${esc(n.name)}</h1>
+    <div>${esc(fmtD(s.start))} · ${fmtT(s.start)}${s.end ? '–' + fmtT(s.end) : ''} · NCS ${esc(s.ncs)} · ${esc(repText(n.repeater))}</div>
+    <h2>Check-ins (${s.checkins.length})</h2>
+    <table><thead><tr><th>#</th><th>Time</th><th>Call</th><th>Name</th><th>Location</th><th>Type</th><th>Traffic</th><th>Notes</th></tr></thead><tbody>
+    ${s.checkins.map((c, i) => `<tr><td>${i + 1}</td><td>${fmtT(c.time)}</td><td><b>${esc(c.call)}</b></td><td>${esc(c.name)}</td><td>${esc(c.loc)}</td><td>${esc(c.kind)}</td><td>${c.traffic === 'None' ? '' : c.traffic}</td><td>${notesFor(c.call)}</td></tr>`).join('')}</tbody></table>
+    ${gen.length ? `<h2>General Notes</h2><table><tbody>${gen.map(x => `<tr><td style="width:70px">${fmtT(x.time)}</td><td>${esc(x.text)}</td></tr>`).join('')}</tbody></table>` : ''}
+    ${s.announcements.length ? `<h2>Announcements</h2><ul>${s.announcements.map(a => `<li>${esc(a.text)}${a.done ? '' : ' <i>(not read)</i>'}</li>`).join('')}</ul>` : ''}`;
+  window.print();
+}
 
-/* ---------- History ---------- */
-$('btnHistory').addEventListener('click', () => {
-  show('histView');
-  $('histList').innerHTML = store.nets.length ? `<table><thead><tr><th>Date</th><th>Net</th><th>Type</th><th>Check-ins</th><th></th></tr></thead><tbody>${store.nets.map(n =>
-    `<tr><td>${new Date(n.start).toLocaleDateString()}</td><td>${esc(n.name)} ${n.end ? '' : '<span class="badge live">LIVE</span>'}</td><td>${esc(n.type)}</td><td>${n.checkins.length}</td>
-     <td><button class="small" data-open="${n.id}">Open</button> <button class="small danger" data-rm="${n.id}">Delete</button></td></tr>`).join('')}</tbody></table>` : '<div class="muted">No nets yet.</div>';
-});
-$('histList').addEventListener('click', e => {
-  const o = e.target.dataset.open, r = e.target.dataset.rm;
-  if (o) { store.currentId = o; save(); openNet(); }
-  if (r && confirm('Delete this net log permanently?')) { store.nets = store.nets.filter(n => n.id !== r); if (store.currentId === r) store.currentId = null; save(); $('btnHistory').click(); }
+/* ---------------- History ---------------- */
+function openHistory(id) {
+  const n = net(id); ui.netId = id;
+  $('hTitle').textContent = n.name + ': History';
+  $('hStart').dataset.id = id;
+  $('hEmpty').classList.toggle('hidden', n.sessions.length > 0);
+  $('hBody').innerHTML = n.sessions.map(s => `<tr><td>${fmtD(s.start)} ${s.end ? '' : '<span class="pill live">LIVE</span>'}</td><td>${fmtT(s.start)}${s.end ? '–' + fmtT(s.end) : ''}</td><td>${esc(s.ncs)}</td><td>${s.checkins.length}</td><td>${s.notes.length}</td>
+    <td class="row"><button class="small" data-a="openSess" data-id="${s.id}">Open</button><button class="small" data-a="csvSess" data-id="${s.id}">CSV</button><button class="small danger" data-a="delSess" data-id="${s.id}">Delete</button></td></tr>`).join('');
+  show('vHistory');
+}
+
+/* ---------------- Events ---------------- */
+const actions = {
+  home: goHome,
+  resume,
+  newNet: () => openEdit(newNet(), true),
+  editNet: el => openEdit(net(el.dataset.id), false),
+  rosterNet: el => { openEdit(net(el.dataset.id), false); $('mCall').scrollIntoView({ block: 'center' }); $('mCall').focus(); },
+  editCurrent: () => openEdit(net(ui.netId), false, 'session'),
+  history: el => openHistory(el.dataset.id),
+  startNet: el => startNet(el.dataset.id),
+  saveNet,
+  cancelEdit: () => { if (ui.returnTo === 'session') { show('vSession'); renderSession(); } else goHome(); },
+  deleteNet: () => {
+    const n = net(ui.draft.id);
+    if (!n || !confirm(`Delete "${n.name}" and all ${n.sessions.length} session logs? This cannot be undone.`)) return;
+    if (S.active && S.active.netId === n.id) S.active = null;
+    S.nets = S.nets.filter(x => x !== n); save(); goHome();
+  },
+  mAdd: addMemberFromForm,
+  mDel: el => { ui.draft.members = ui.draft.members.filter(x => x.call !== el.dataset.call); renderMembers(); },
+  mClear: () => { if (confirm('Remove all members from this roster? (Takes effect when you click Save Net.)')) { ui.draft.members = []; renderMembers(); } },
+  mImport: () => { importMembers(parseList($('mPaste').value)); $('mPaste').value = ''; },
+  mDownload: () => download(`${(ui.draft.name || 'roster').replace(/\W+/g, '_')}_roster.csv`, csv([['callsign', 'name', 'location'], ...ui.draft.members.map(r => [r.call, r.name, r.loc])])),
+  openSess: el => openSession(ui.netId, el.dataset.id),
+  csvSess: el => { const n = net(ui.netId), s = n.sessions.find(x => x.id === el.dataset.id); download(fileName(n, s), sessionCsv(n, s)); },
+  delSess: el => {
+    const n = net(ui.netId); if (!confirm('Delete this session log permanently?')) return;
+    if (S.active && S.active.sessId === el.dataset.id) S.active = null;
+    n.sessions = n.sessions.filter(x => x.id !== el.dataset.id); save(); openHistory(n.id);
+  },
+  select: el => { ui.tab = 'notes'; setSel(ui.sel === el.dataset.call ? null : el.dataset.call); },
+  pick: el => { ui.tab = 'notes'; $('callInput').value = ''; ui.act = -1; setSel(el.dataset.call); renderRoll(); $('noteInput').focus(); },
+  deselect: () => setSel(null),
+  rollIn: el => checkIn(el.dataset.call),
+  done: el => { const [, s] = curSess(); const c = s.checkins.find(x => x.call === el.dataset.call); c.done = !c.done; save(); renderLog(); },
+  delCi: el => {
+    const [, s] = curSess(); const call = el.dataset.call; const nn = s.notes.filter(x => x.call === call).length;
+    if (!confirm(`Remove ${call} from this session's check-ins?${nn ? `\n(${nn} note(s) for ${call} will be kept.)` : ''}`)) return;
+    s.checkins = s.checkins.filter(x => x.call !== call); if (ui.sel === call) ui.sel = null; save(); renderSession();
+  },
+  tab: el => { ui.tab = el.dataset.v; renderSide(); if (ui.tab === 'notes') $('noteInput').focus(); if (ui.tab === 'ann') $('annInput').focus(); },
+  toggleNoteFilter: () => { ui.allNotes = !ui.allNotes; renderSide(); },
+  delNote: el => { const [, s] = curSess(); if (!confirm('Delete this note?')) return; s.notes = s.notes.filter(x => x.id !== el.dataset.id); save(); renderTop(); renderLog(); renderSide(); },
+  annDone: el => { const [, s] = curSess(); const a = s.announcements.find(x => x.id === el.dataset.id); a.done = el.checked; save(); renderSide(); },
+  annDel: (el, e) => { e.preventDefault(); const [, s] = curSess(); s.announcements = s.announcements.filter(x => x.id !== el.dataset.id); save(); renderSide(); },
+  endNet, reopen,
+  exportCsv: () => { const [n, s] = curSess(); download(fileName(n, s), sessionCsv(n, s)); },
+  print: () => { const [n, s] = curSess(); printSession(n, s); },
+};
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-a]'); if (!el) return;
+  const fn = actions[el.dataset.a]; if (!fn) return;
+  if (el.tagName === 'A') e.preventDefault();
+  fn(el, e);
 });
 
-/* ---------- Boot ---------- */
-cur() ? openNet() : show('setupView');
+// Station detail edits (name/location also update the roster)
+document.addEventListener('change', e => {
+  const id = e.target.id; if (!['stName', 'stLoc', 'stKind', 'stTraffic'].includes(id)) return;
+  const [n, s] = curSess(); const c = s && s.checkins.find(x => x.call === ui.sel); if (!c) return;
+  const v = e.target.value.trim();
+  if (id === 'stName' || id === 'stLoc') {
+    const k = id === 'stName' ? 'name' : 'loc'; c[k] = v;
+    const mem = n.members.find(m => m.call === c.call); if (mem) mem[k] = v;
+  } else c[id === 'stKind' ? 'kind' : 'traffic'] = v;
+  save(); renderTop(); renderLog();
+});
+document.addEventListener('keydown', e => {
+  const id = e.target.id;
+  if ((id === 'stName' || id === 'stLoc') && e.key === 'Enter') {
+    e.preventDefault(); e.target.dispatchEvent(new Event('change', { bubbles: true }));
+    $(id === 'stName' ? 'stLoc' : 'callInput').focus(); return;
+  }
+  if (!onSession() || /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
+  if (e.key === '/') { e.preventDefault(); $('callInput').focus(); }
+  else if (e.key === 'n') { e.preventDefault(); ui.tab = 'notes'; renderSide(); $('noteInput').focus(); }
+});
+
+$('callInput').addEventListener('input', () => {
+  const el = $('callInput'); el.value = el.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  ui.act = -1; $('callErr').textContent = ''; renderRoll();
+});
+$('callInput').addEventListener('keydown', e => {
+  const len = ui.items.length;
+  if (e.key === 'ArrowDown' && len) { e.preventDefault(); ui.act = (ui.act + 1) % len; renderRoll(); }
+  else if (e.key === 'ArrowUp' && len) { e.preventDefault(); ui.act = ui.act <= 0 ? len - 1 : ui.act - 1; renderRoll(); }
+  else if (e.key === 'Enter') { e.preventDefault(); submitCall(); }
+  else if (e.key === 'Escape') { $('callInput').value = ''; ui.act = -1; $('callErr').textContent = ''; renderRoll(); }
+});
+$('noteInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addNote(); }
+  else if (e.key === 'Escape') { setSel(null); $('noteInput').focus(); }
+});
+$('annInput').addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return; e.preventDefault();
+  const t = $('annInput').value.trim(); if (!t) return;
+  const [, s] = curSess(); s.announcements.push({ id: uid(), text: t, done: false }); save(); $('annInput').value = ''; renderSide(); $('annInput').focus();
+});
+['mCall', 'mName', 'mLoc'].forEach(id => $(id).addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addMemberFromForm(); } }));
+$('mCall').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); $('mErr').textContent = ''; });
+$('eNcs').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); });
+$('mFile').addEventListener('change', async e => { const f = e.target.files[0]; if (f) importMembers(parseList(await f.text())); e.target.value = ''; });
+
+/* ---------------- Boot ---------------- */
+save();
+if (activePair()[0]) resume(); else goHome();
 })();
 </script>
 </body>
