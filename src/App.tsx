@@ -9,6 +9,7 @@ import StationsPage from './pages/StationsPage';
 import StationPage from './pages/StationPage';
 import SettingsPage from './pages/SettingsPage';
 import NetPage from './pages/NetPage';
+import UpdateBanner from './ui/UpdateBanner';
 import { db, getMeta, live } from './data/db';
 
 const BACKUP_DUE_DAYS = 7;
@@ -60,7 +61,11 @@ export default function App() {
           <Route path="*" element={<Navigate to="/groups" replace />} />
         </Routes>
       </main>
-      <footer className="app-foot">Data is stored in this browser. Download a backup from Settings regularly.</footer>
+      <footer className="app-foot">
+        Data is stored in this browser. Download a backup from Settings regularly.
+        <span className="version" title={`Built ${new Date(__BUILD_TIME__).toLocaleString()}`}>Version {__APP_VERSION__} · {new Date(__BUILD_TIME__).toLocaleDateString([], { month: 'short', day: 'numeric' })} {new Date(__BUILD_TIME__).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
+      </footer>
+      <UpdateBanner />
       {searching && <SearchPalette onClose={() => setSearching(false)} />}
     </>
   );

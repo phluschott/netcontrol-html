@@ -170,3 +170,7 @@ footer.app-foot { text-align: center; color: var(--dim); font-size: 10px; paddin
 @media (max-width: 640px) { .call-buttons { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 a.btn.live, .btn.live { color: var(--green3); border-color: var(--green-bd); background: var(--green-bg); }
 a.btn:hover { text-decoration: none; }
+
+.app-foot .version { display: block; margin-top: 4px; color: var(--text-ghost, #666); }
+.update-banner { position: fixed; left: 50%; transform: translateX(-50%); bottom: 14px; z-index: 70; display: flex; gap: 10px; align-items: center;
+  background: var(--surface); border: 1px solid var(--green-bd); border-left: 2px solid var(--green2); padding: 8px 12px; font-size: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.5); }

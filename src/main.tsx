@@ -1,7 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { HashRouter } from 'react-router-dom';
-import { registerSW } from 'virtual:pwa-register';
 import App from './App';
 import { ToastProvider } from './ui/common';
 import { ensureLocalUser } from './data/services';
@@ -32,5 +31,4 @@ async function boot() {
   );
 }
 
-if (import.meta.env.PROD) registerSW({ immediate: true });
 boot();

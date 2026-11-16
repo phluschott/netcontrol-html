@@ -2,12 +2,19 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
+const version = (process.env.GITHUB_SHA ?? 'local').slice(0, 7);
+
 export default defineConfig({
   base: './',
+  define: {
+    __APP_VERSION__: JSON.stringify(version),
+    __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+  },
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // Ask before switching to a new version, so an update never reloads the page in the middle of a net.
+      registerType: 'prompt',
       manifest: {
         name: 'Net Control',
         short_name: 'Net Control',
