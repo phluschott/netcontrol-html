@@ -6,10 +6,10 @@
  * Reads can use db directly.
  */
 import { db, getMeta, live, setMeta } from './db';
-import { PermissionError, roleAllows, type Permission } from './acl';
+import { ALL_PERMISSIONS, BUILT_IN_ROLES, PermissionError, isBuiltInRole, permissionsOf, type Permission, type RoleDef } from './acl';
 import { baseCall, callError, isValidCall } from '../lib/callsign';
 import type {
-  AuditEntry, Group, GroupAccess, GroupFields, GroupRole, ID, Membership, MembershipFields, Meta,
+  AuditEntry, CustomRole, Group, GroupAccess, GroupFields, ID, Membership, MembershipFields, Meta,
   Station, StationFields, User,
 } from './types';
 
@@ -30,7 +30,9 @@ export async function ensureLocalUser(): Promise<User> {
   }
   const userId = uuid();
   const t = nowIso();
-  const user: User = { id: userId, createdAt: t, createdBy: userId, updatedAt: t, updatedBy: userId, deletedAt: null, name: 'Local operator', call: '', email: '' };
+  // The first user in this browser is the Admin.
+  const isAdmin = (await db.users.count()) === 0;
+  const user: User = { id: userId, createdAt: t, createdBy: userId, updatedAt: t, updatedBy: userId, deletedAt: null, name: 'Local operator', call: '', email: '', isAdmin };
   await db.users.add(user);
   await setMeta('currentUserId', userId);
   return user;
@@ -79,29 +81,57 @@ async function audit(userId: ID, entity: AuditEntry['entity'], entityId: ID, act
 
 /* ---------------- permissions ---------------- */
 
-export async function groupRole(groupId: ID, userId?: ID): Promise<GroupRole | null> {
+export async function isAdmin(userId?: ID): Promise<boolean> {
+  const u = await db.users.get(userId ?? (await currentUserId()));
+  return !!u && !u.deletedAt && u.isAdmin === true;
+}
+
+/** Role definitions (built-in and custom) a user holds in a group. */
+export async function rolesInGroup(groupId: ID, userId?: ID): Promise<RoleDef[]> {
   const uid = userId ?? (await currentUserId());
   const row = await db.groupAccess.where('[groupId+userId]').equals([groupId, uid]).first();
-  return row && !row.deletedAt ? row.role : null;
+  if (!row || row.deletedAt) return [];
+  const out: RoleDef[] = [];
+  for (const id of row.roleIds) {
+    if (isBuiltInRole(id)) { out.push(BUILT_IN_ROLES[id]); continue; }
+    const r = await db.roles.get(id);
+    if (r && !r.deletedAt && r.groupId === groupId) out.push({ id: r.id, name: r.name, permissions: r.permissions, builtIn: false, description: r.description });
+  }
+  return out;
+}
+
+/** Everything a user may do in a group. Admins may do everything. */
+export async function groupPermissions(groupId: ID, userId?: ID): Promise<Set<Permission>> {
+  const uid = userId ?? (await currentUserId());
+  if (await isAdmin(uid)) return new Set(ALL_PERMISSIONS);
+  return permissionsOf(await rolesInGroup(groupId, uid));
 }
 
 export async function can(perm: Permission, groupId: ID, userId?: ID): Promise<boolean> {
-  return roleAllows(await groupRole(groupId, userId), perm);
+  return (await groupPermissions(groupId, userId)).has(perm);
 }
 
 async function requirePerm(perm: Permission, groupId: ID, userId: ID) {
   if (!(await can(perm, groupId, userId))) throw new PermissionError(perm, groupId);
 }
 
-/** A station is shared. A user may edit it if they created it, it belongs to no group, or they manage members in any group it belongs to. */
+async function requireAdmin(userId: ID) {
+  if (!(await isAdmin(userId))) throw new PermissionError('admin');
+}
+
+/** Tables every permission check reads; include them in any transaction that checks permissions. */
+const permTables = () => [db.users, db.groupAccess, db.roles, db.meta];
+
+/** A station is shared. A user may edit it if they are Admin, created it, it belongs to no group, or they hold stations.edit in any group it belongs to. */
 export async function canEditStation(stationId: ID, userId?: ID): Promise<boolean> {
   const uid = userId ?? (await currentUserId());
   const st = await db.stations.get(stationId);
   if (!st || st.deletedAt) return false;
+  if (await isAdmin(uid)) return true;
   if (st.createdBy === uid) return true;
   const ms = live(await db.memberships.where('stationId').equals(stationId).toArray());
   if (!ms.length) return true;
-  for (const m of ms) if (await can('members.manage', m.groupId, uid)) return true;
+  for (const m of ms) if (await can('stations.edit', m.groupId, uid)) return true;
   return false;
 }
 
@@ -167,7 +197,7 @@ export async function createStation(input: Partial<StationFields> & { call: stri
 
 export async function updateStation(id: ID, patch: Partial<StationFields>): Promise<Station> {
   const userId = await currentUserId();
-  return db.transaction('rw', [db.stations, db.memberships, db.groupAccess, db.audit, db.meta], async () => {
+  return db.transaction('rw', [db.stations, db.memberships, db.audit, ...permTables()], async () => {
     const before = await db.stations.get(id);
     if (!before || before.deletedAt) throw new ValidationError('Station not found.');
     if (!(await canEditStation(id, userId))) throw new ValidationError(`You do not have permission to edit ${before.call}.`);
@@ -196,7 +226,7 @@ function pickStation(s: Station): StationFields {
 
 export async function deleteStation(id: ID) {
   const userId = await currentUserId();
-  await db.transaction('rw', [db.stations, db.memberships, db.groupAccess, db.audit, db.meta], async () => {
+  await db.transaction('rw', [db.stations, db.memberships, db.audit, ...permTables()], async () => {
     const st = await db.stations.get(id);
     if (!st || st.deletedAt) return;
     if (!(await canEditStation(id, userId))) throw new ValidationError(`You do not have permission to delete ${st.call}.`);
@@ -219,10 +249,10 @@ export async function createGroup(input: Partial<GroupFields> & { name: string }
   const userId = await currentUserId();
   const fields = normalizeGroup({ type: 'club', description: '', counties: [], settings: {}, ...input });
   if (!fields.name) throw new ValidationError('A group needs a name.');
-  return db.transaction('rw', db.groups, db.groupAccess, db.audit, async () => {
+  return db.transaction('rw', [db.groups, db.audit, ...permTables()], async () => {
+    await requireAdmin(userId);
     const g: Group = { ...newMeta(userId), ...fields };
     await db.groups.add(g);
-    await db.groupAccess.add({ ...newMeta(userId), groupId: g.id, userId, role: 'owner' });
     await audit(userId, 'group', g.id, 'create', null, `Created group ${g.name}`);
     return g;
   });
@@ -230,7 +260,7 @@ export async function createGroup(input: Partial<GroupFields> & { name: string }
 
 export async function updateGroup(id: ID, patch: Partial<GroupFields>): Promise<Group> {
   const userId = await currentUserId();
-  return db.transaction('rw', [db.groups, db.groupAccess, db.audit, db.meta], async () => {
+  return db.transaction('rw', [db.groups, db.audit, ...permTables()], async () => {
     await requirePerm('group.edit', id, userId);
     const before = await db.groups.get(id);
     if (!before || before.deletedAt) throw new ValidationError('Group not found.');
@@ -247,7 +277,7 @@ export async function updateGroup(id: ID, patch: Partial<GroupFields>): Promise<
 
 export async function deleteGroup(id: ID) {
   const userId = await currentUserId();
-  await db.transaction('rw', [db.groups, db.memberships, db.groupAccess, db.audit, db.meta], async () => {
+  await db.transaction('rw', [db.groups, db.memberships, db.audit, ...permTables()], async () => {
     await requirePerm('group.delete', id, userId);
     const g = await db.groups.get(id);
     if (!g || g.deletedAt) return;
@@ -255,6 +285,7 @@ export async function deleteGroup(id: ID) {
     await db.groups.update(id, { deletedAt: t, updatedAt: t, updatedBy: userId });
     await db.memberships.where('groupId').equals(id).modify({ deletedAt: t, updatedAt: t, updatedBy: userId });
     await db.groupAccess.where('groupId').equals(id).modify({ deletedAt: t, updatedAt: t, updatedBy: userId });
+    await db.roles.where('groupId').equals(id).modify({ deletedAt: t, updatedAt: t, updatedBy: userId });
     await audit(userId, 'group', id, 'delete', null, `Deleted group ${g.name}`);
   });
 }
@@ -280,7 +311,7 @@ async function upsertMembershipTx(userId: ID, groupId: ID, stationId: ID, fields
 
 export async function addMembership(groupId: ID, stationId: ID, fields: Partial<MembershipFields> = {}): Promise<Membership> {
   const userId = await currentUserId();
-  return db.transaction('rw', [db.memberships, db.groupAccess, db.groups, db.stations, db.audit, db.meta], async () => {
+  return db.transaction('rw', [db.memberships, db.groups, db.stations, db.audit, ...permTables()], async () => {
     await requirePerm('members.manage', groupId, userId);
     const st = await db.stations.get(stationId);
     const g = await db.groups.get(groupId);
@@ -303,7 +334,7 @@ export async function addStationToGroup(groupId: ID, input: Partial<StationField
 
 export async function updateMembership(id: ID, patch: Partial<MembershipFields>): Promise<Membership> {
   const userId = await currentUserId();
-  return db.transaction('rw', [db.memberships, db.groupAccess, db.audit, db.meta], async () => {
+  return db.transaction('rw', [db.memberships, db.audit, ...permTables()], async () => {
     const before = await db.memberships.get(id);
     if (!before || before.deletedAt) throw new ValidationError('Membership not found.');
     await requirePerm('members.manage', before.groupId, userId);
@@ -319,7 +350,7 @@ export async function updateMembership(id: ID, patch: Partial<MembershipFields>)
 
 export async function removeMembership(id: ID) {
   const userId = await currentUserId();
-  await db.transaction('rw', [db.memberships, db.groupAccess, db.stations, db.groups, db.audit, db.meta], async () => {
+  await db.transaction('rw', [db.memberships, db.stations, db.groups, db.audit, ...permTables()], async () => {
     const m = await db.memberships.get(id);
     if (!m || m.deletedAt) return;
     await requirePerm('members.manage', m.groupId, userId);
@@ -329,29 +360,124 @@ export async function removeMembership(id: ID) {
   });
 }
 
-/* ---------------- group access (multi-user ready) ---------------- */
+/* ---------------- roles & access (Admin only) ---------------- */
 
-export async function setGroupAccess(groupId: ID, targetUserId: ID, role: GroupRole): Promise<GroupAccess> {
+/** All roles that can be assigned in a group: the fixed built-ins plus the group's custom positions. */
+export async function groupRoleDefs(groupId: ID): Promise<RoleDef[]> {
+  const custom = live(await db.roles.where('groupId').equals(groupId).toArray())
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((r) => ({ id: r.id, name: r.name, permissions: r.permissions, builtIn: false, description: r.description }));
+  return [...Object.values(BUILT_IN_ROLES), ...custom];
+}
+
+/** Set exactly which roles a user holds in a group. An empty list removes their access to the group. */
+export async function assignRoles(groupId: ID, targetUserId: ID, roleIds: string[]): Promise<GroupAccess | null> {
   const userId = await currentUserId();
-  return db.transaction('rw', db.groupAccess, db.audit, db.meta, async () => {
-    await requirePerm('access.manage', groupId, userId);
-    const rows = live(await db.groupAccess.where('groupId').equals(groupId).toArray());
-    const existing = rows.find((r) => r.userId === targetUserId);
-    const owners = rows.filter((r) => r.role === 'owner');
-    if (existing?.role === 'owner' && role !== 'owner' && owners.length === 1) throw new ValidationError('A group must keep at least one owner.');
-    if (role === 'owner' && !(await can('group.delete', groupId, userId))) throw new ValidationError('Only an owner can make another owner.');
+  return db.transaction('rw', [db.groups, db.audit, ...permTables()], async () => {
+    await requireAdmin(userId);
+    const g = await db.groups.get(groupId);
+    if (!g || g.deletedAt) throw new ValidationError('Group not found.');
+    const valid = new Set((await groupRoleDefs(groupId)).map((r) => r.id));
+    const bad = roleIds.filter((r) => !valid.has(r));
+    if (bad.length) throw new ValidationError('Unknown role for this group.');
+    const ids = [...new Set(roleIds)];
+    const existing = await db.groupAccess.where('[groupId+userId]').equals([groupId, targetUserId]).first();
+    const t = nowIso();
+    if (!ids.length) {
+      if (existing && !existing.deletedAt) {
+        await db.groupAccess.update(existing.id, { deletedAt: t, updatedAt: t, updatedBy: userId, roleIds: [] });
+        await audit(userId, 'groupAccess', existing.id, 'delete', { roleIds: [existing.roleIds, []] }, `Removed access to ${g.name}`);
+      }
+      return null;
+    }
     if (existing) {
-      const next = { ...existing, role, updatedAt: nowIso(), updatedBy: userId };
+      const next: GroupAccess = { ...existing, roleIds: ids, deletedAt: null, updatedAt: t, updatedBy: userId };
       await db.groupAccess.put(next);
-      await audit(userId, 'groupAccess', next.id, 'update', { role: [existing.role, role] }, 'Changed access');
+      await audit(userId, 'groupAccess', next.id, 'update', { roleIds: [existing.deletedAt ? [] : existing.roleIds, ids] }, `Changed roles in ${g.name}`);
       return next;
     }
-    const row: GroupAccess = { ...newMeta(userId), groupId, userId: targetUserId, role };
-    await db.groupAccess.put(row);
-    await audit(userId, 'groupAccess', row.id, 'create', null, 'Granted access');
+    const row: GroupAccess = { ...newMeta(userId), groupId, userId: targetUserId, roleIds: ids };
+    await db.groupAccess.add(row);
+    await audit(userId, 'groupAccess', row.id, 'create', { roleIds: [[], ids] }, `Granted roles in ${g.name}`);
     return row;
   });
 }
 
+export interface CustomRoleInput { name: string; description: string; permissions: Permission[] }
+
+async function checkRoleName(groupId: ID, name: string, exceptId?: ID) {
+  const n = name.trim().toLowerCase();
+  if (!n) throw new ValidationError('A position needs a name.');
+  const builtIn = Object.values(BUILT_IN_ROLES).some((r) => r.name.toLowerCase() === n);
+  const custom = live(await db.roles.where('groupId').equals(groupId).toArray()).some((r) => r.id !== exceptId && r.name.trim().toLowerCase() === n);
+  if (builtIn || custom) throw new ValidationError(`There is already a position named "${name.trim()}" in this group.`);
+}
+
+const cleanPerms = (ps: Permission[]) => ALL_PERMISSIONS.filter((p) => ps.includes(p));
+
+export async function createCustomRole(groupId: ID, input: CustomRoleInput): Promise<CustomRole> {
+  const userId = await currentUserId();
+  return db.transaction('rw', [db.groups, db.audit, ...permTables()], async () => {
+    await requireAdmin(userId);
+    const g = await db.groups.get(groupId);
+    if (!g || g.deletedAt) throw new ValidationError('Group not found.');
+    await checkRoleName(groupId, input.name);
+    const r: CustomRole = { ...newMeta(userId), groupId, name: input.name.trim(), description: input.description.trim(), permissions: cleanPerms(input.permissions) };
+    await db.roles.add(r);
+    await audit(userId, 'role', r.id, 'create', null, `Created position ${r.name} in ${g.name}`);
+    return r;
+  });
+}
+
+export async function updateCustomRole(id: ID, input: CustomRoleInput): Promise<CustomRole> {
+  const userId = await currentUserId();
+  return db.transaction('rw', [db.audit, ...permTables()], async () => {
+    await requireAdmin(userId);
+    const before = await db.roles.get(id);
+    if (!before || before.deletedAt) throw new ValidationError('Position not found.');
+    await checkRoleName(before.groupId, input.name, id);
+    const next: CustomRole = { ...before, name: input.name.trim(), description: input.description.trim(), permissions: cleanPerms(input.permissions), updatedAt: nowIso(), updatedBy: userId };
+    const changes = diff(before, next, ['name', 'description', 'permissions']);
+    if (!changes) return before;
+    await db.roles.put(next);
+    await audit(userId, 'role', id, 'update', changes, `Updated position ${next.name}`);
+    return next;
+  });
+}
+
+/** Deleting a position also removes it from everyone who held it. */
+export async function deleteCustomRole(id: ID) {
+  const userId = await currentUserId();
+  await db.transaction('rw', [db.audit, ...permTables()], async () => {
+    await requireAdmin(userId);
+    const r = await db.roles.get(id);
+    if (!r || r.deletedAt) return;
+    const t = nowIso();
+    await db.roles.update(id, { deletedAt: t, updatedAt: t, updatedBy: userId });
+    const holders = live(await db.groupAccess.where('groupId').equals(r.groupId).toArray()).filter((a) => a.roleIds.includes(id));
+    for (const a of holders) {
+      const roleIds = a.roleIds.filter((x) => x !== id);
+      await db.groupAccess.put({ ...a, roleIds, deletedAt: roleIds.length ? null : t, updatedAt: t, updatedBy: userId });
+    }
+    await audit(userId, 'role', id, 'delete', null, `Deleted position ${r.name}${holders.length ? ` (removed from ${holders.length} user${holders.length === 1 ? '' : 's'})` : ''}`);
+  });
+}
+
+export async function setUserAdmin(targetUserId: ID, admin: boolean) {
+  const userId = await currentUserId();
+  await db.transaction('rw', [db.audit, ...permTables()], async () => {
+    await requireAdmin(userId);
+    const u = await db.users.get(targetUserId);
+    if (!u || u.deletedAt) throw new ValidationError('User not found.');
+    if (!admin) {
+      const admins = live(await db.users.toArray()).filter((x) => x.isAdmin);
+      if (admins.length === 1 && admins[0].id === targetUserId) throw new ValidationError('There must always be at least one Admin.');
+    }
+    if (u.isAdmin === admin) return;
+    await db.users.put({ ...u, isAdmin: admin, updatedAt: nowIso(), updatedBy: userId });
+    await audit(userId, 'user', targetUserId, 'update', { isAdmin: [u.isAdmin, admin] }, admin ? `Made ${u.name} an Admin` : `Removed Admin from ${u.name}`);
+  });
+}
+
 /* re-export for import module */
-export { upsertMembershipTx, normalizeStation, newMeta, audit, requirePerm, diff, STATION_KEYS, isValidCall };
+export { upsertMembershipTx, normalizeStation, newMeta, audit, requirePerm, requireAdmin, permTables, diff, STATION_KEYS, isValidCall };

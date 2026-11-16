@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { db, live } from './db';
 import {
   addMembership, addStationToGroup, can, createGroup, createStation, currentUserId, deleteGroup, deleteStation,
-  ensureLocalUser, findStationByCall, removeMembership, setGroupAccess, updateMembership, updateStation, uuid,
+  ensureLocalUser, findStationByCall, removeMembership, assignRoles, createCustomRole, deleteCustomRole, groupPermissions, isAdmin, setUserAdmin, updateGroup, updateMembership, updateStation,
 } from './services';
 import { applyImport, buildImportPlan, choiceKey, loadPlanContext } from './importPlan';
 import { exportAll, restoreAll } from './backup';
@@ -78,10 +78,10 @@ describe('stations', () => {
 });
 
 describe('groups, memberships, access', () => {
-  it('creator owns the group; one station can be in many groups', async () => {
+  it('one station can be in many groups', async () => {
     const sky = await createGroup({ name: 'County Skywarn', type: 'skywarn' });
     const club = await createGroup({ name: 'Radio Club' });
-    expect(await can('group.delete', sky.id)).toBe(true);
+    expect(await can('group.delete', sky.id)).toBe(true); // local user is the Admin
     const a = await addStationToGroup(sky.id, { call: 'W9ABC', name: 'Sam' }, { roles: ['spotter'], spotterId: 'S-12' });
     const b = await addStationToGroup(club.id, { call: 'w9abc' });
     expect(b.existed).toBe(true);
@@ -90,19 +90,6 @@ describe('groups, memberships, access', () => {
     await expect(addMembership(club.id, a.station.id)).rejects.toThrow(/already a member/);
     const m = await updateMembership(a.membership.id, { roles: [] });
     expect(m.roles).toEqual(['member']);
-  });
-  it('enforces roles', async () => {
-    const g = await createGroup({ name: 'ARES' });
-    const me = await currentUserId();
-    const other = uuid();
-    await setGroupAccess(g.id, other, 'viewer');
-    expect(await can('members.manage', g.id, other)).toBe(false);
-    expect(await can('group.view', g.id, other)).toBe(true);
-    await expect(setGroupAccess(g.id, me, 'admin')).rejects.toThrow(/at least one owner/);
-    // act as the viewer
-    await db.meta.put({ key: 'currentUserId', value: other });
-    await expect(addStationToGroup(g.id, { call: 'K9XYZ' })).rejects.toThrow(/permission/);
-    await expect(deleteGroup(g.id)).rejects.toThrow(/permission/);
   });
   it('deleting a group removes its memberships but keeps stations', async () => {
     const g = await createGroup({ name: 'Temp' });
@@ -177,7 +164,20 @@ describe('backup', () => {
     await db.delete(); await db.open(); await ensureLocalUser();
     const res = await restoreAll(file);
     expect(res).toEqual({ stations: 1, groups: 1, memberships: 1 });
-    expect(await can('group.delete', g.id)).toBe(true); // original owner restored as current user
+    expect(await isAdmin()).toBe(true); // original Admin restored as current user
+  });
+  it('restores a backup made before positions existed without losing Admin', async () => {
+    const g = await createGroup({ name: 'Club' });
+    const file = JSON.parse(JSON.stringify(await exportAll()));
+    // simulate the old format: owner role on access, no isAdmin flag, no roles table
+    const me = await currentUserId();
+    file.tables.users = file.tables.users.map(({ isAdmin: _x, ...u }: Record<string, unknown>) => u);
+    file.tables.groupAccess = [{ id: 'a1', groupId: g.id, userId: me, role: 'owner', createdAt: '', createdBy: me, updatedAt: '', updatedBy: me, deletedAt: null }];
+    delete file.tables.roles;
+    await db.delete(); await db.open(); await ensureLocalUser();
+    await restoreAll(file);
+    expect(await isAdmin()).toBe(true);
+    expect((await db.groupAccess.get('a1'))?.roleIds).toEqual(['net_controller']);
   });
   it('rejects other files', async () => {
     await expect(restoreAll({ foo: 1 })).rejects.toThrow(/not a Net Control backup/);
@@ -198,5 +198,103 @@ describe('legacy migration', () => {
     expect(groups.map((x) => x.type).sort()).toEqual(['club', 'skywarn']);
     expect(live(await db.stations.toArray()).map((s) => s.call).sort()).toEqual(['K9XYZ', 'W9ABC']);
     expect(live(await db.memberships.toArray())).toHaveLength(3);
+  });
+});
+
+/* ---------------- access control ---------------- */
+import type { User } from './types';
+import { NetControlDB } from './db';
+import Dexie from 'dexie';
+
+async function addUser(name: string): Promise<string> {
+  const id = crypto.randomUUID(); const t = new Date().toISOString();
+  const u: User = { id, createdAt: t, createdBy: id, updatedAt: t, updatedBy: id, deletedAt: null, name, call: '', email: '', isAdmin: false };
+  await db.users.add(u);
+  return id;
+}
+const actAs = (id: string) => db.meta.put({ key: 'currentUserId', value: id });
+
+describe('access control', () => {
+  it('first local user is the global Admin; Admin alone creates groups and manages roles', async () => {
+    const admin = await currentUserId();
+    expect(await isAdmin(admin)).toBe(true);
+    const g = await createGroup({ name: 'Skywarn' });
+    const nc = await addUser('Nora');
+    await assignRoles(g.id, nc, ['net_controller']);
+    await actAs(nc);
+    expect(await isAdmin()).toBe(false);
+    await expect(createGroup({ name: 'Another' })).rejects.toThrow(/Only an Admin/);
+    await expect(assignRoles(g.id, nc, ['net_controller', 'moderator'])).rejects.toThrow(/Only an Admin/);
+    await expect(createCustomRole(g.id, { name: 'Liaison', description: '', permissions: [] })).rejects.toThrow(/Only an Admin/);
+  });
+
+  it('Net Controller can do everything in the group except user and role management', async () => {
+    const g = await createGroup({ name: 'Skywarn' });
+    const other = await createGroup({ name: 'Club' });
+    const nc = await addUser('Nora');
+    await assignRoles(g.id, nc, ['net_controller']);
+    await actAs(nc);
+    const { station } = await addStationToGroup(g.id, { call: 'W9ABC' });
+    await updateStation(station.id, { name: 'Sam' });
+    await updateGroup(g.id, { description: 'Edited by NC' });
+    // no rights in a group they hold no role in
+    await expect(addStationToGroup(other.id, { call: 'K9XYZ' })).rejects.toThrow(/permission/);
+    await deleteGroup(g.id);
+  });
+
+  it('Moderator and Standard User cannot manage members; permissions follow the role table', async () => {
+    const g = await createGroup({ name: 'Club' });
+    const mod = await addUser('Max'); const std = await addUser('Stu');
+    await assignRoles(g.id, mod, ['moderator']);
+    await assignRoles(g.id, std, ['standard']);
+    expect([...(await groupPermissions(g.id, mod))].sort()).toEqual(['boards.manage', 'members.view', 'messages.moderate', 'messages.post', 'nets.history']);
+    expect([...(await groupPermissions(g.id, std))].sort()).toEqual(['members.view', 'messages.post', 'nets.history']);
+    await actAs(mod);
+    await expect(addStationToGroup(g.id, { call: 'K9XYZ' })).rejects.toThrow(/permission/);
+    await actAs(std);
+    await expect(updateGroup(g.id, { description: 'x' })).rejects.toThrow(/permission/);
+  });
+
+  it('custom positions are per group, combine with other roles, and are removed from holders when deleted', async () => {
+    const g = await createGroup({ name: 'Skywarn' });
+    const other = await createGroup({ name: 'Club' });
+    const roster = await createCustomRole(g.id, { name: 'Roster Keeper', description: 'Keeps the member list', permissions: ['members.manage', 'members.view'] });
+    await expect(createCustomRole(g.id, { name: 'roster keeper', description: '', permissions: [] })).rejects.toThrow(/already a position/);
+    await expect(createCustomRole(g.id, { name: 'Moderator', description: '', permissions: [] })).rejects.toThrow(/already a position/);
+    await expect(assignRoles(other.id, await currentUserId(), [roster.id])).rejects.toThrow(/Unknown role/);
+    const u = await addUser('Ray');
+    await assignRoles(g.id, u, [roster.id, 'moderator']);
+    expect(await can('members.manage', g.id, u)).toBe(true);
+    expect(await can('messages.moderate', g.id, u)).toBe(true);
+    expect(await can('group.edit', g.id, u)).toBe(false);
+    await deleteCustomRole(roster.id);
+    expect(await can('members.manage', g.id, u)).toBe(false);
+    expect(await can('messages.moderate', g.id, u)).toBe(true);
+  });
+
+  it('there is always at least one Admin', async () => {
+    await expect(setUserAdmin(await currentUserId(), false)).rejects.toThrow(/at least one Admin/);
+    const u = await addUser('Second');
+    await setUserAdmin(u, true);
+    await setUserAdmin(await currentUserId(), false);
+    expect(await isAdmin(u)).toBe(true);
+  });
+
+  it('upgrades data saved under the earlier owner/admin/operator/viewer roles', async () => {
+    const name = 'upgrade-test';
+    await Dexie.delete(name);
+    const v1 = new Dexie(name);
+    v1.version(1).stores({ stations: 'id, &call, status, *previousCalls', groups: 'id, name, type', memberships: 'id, &[groupId+stationId], groupId, stationId', users: 'id', groupAccess: 'id, &[groupId+userId], groupId, userId', audit: 'id, at, [entity+entityId], userId', meta: 'key' });
+    await v1.open();
+    await v1.table('users').bulkAdd([{ id: 'u1', name: 'Owner' }, { id: 'u2', name: 'Viewer' }]);
+    await v1.table('groupAccess').bulkAdd([{ id: 'a1', groupId: 'g1', userId: 'u1', role: 'owner' }, { id: 'a2', groupId: 'g1', userId: 'u2', role: 'viewer' }]);
+    v1.close();
+    const v2 = new NetControlDB(name);
+    await v2.open();
+    expect((await v2.users.get('u1'))?.isAdmin).toBe(true);
+    expect((await v2.users.get('u2'))?.isAdmin).toBe(false);
+    expect((await v2.groupAccess.get('a2'))?.roleIds).toEqual(['standard']);
+    expect((await v2.groupAccess.get('a1')) as unknown as { role?: string }).not.toHaveProperty('role');
+    v2.close();
   });
 });

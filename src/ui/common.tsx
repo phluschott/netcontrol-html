@@ -1,9 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, getMeta } from '../data/db';
-import { groupRole } from '../data/services';
-import { roleAllows, type Permission } from '../data/acl';
-import type { GroupRole, ID, User } from '../data/types';
+import type { User } from '../data/types';
 
 /* ---------- toasts ---------- */
 interface Toast { id: number; text: string; error?: boolean }
@@ -48,14 +46,6 @@ export function useCurrentUser(): User | undefined {
     const id = await getMeta<string>('currentUserId');
     return id ? db.users.get(id) : undefined;
   });
-}
-
-export function useGroupRole(groupId: ID | undefined): GroupRole | null | undefined {
-  return useLiveQuery(async () => (groupId ? groupRole(groupId) : null), [groupId]);
-}
-
-export function useCan(groupId: ID | undefined, perm: Permission): boolean {
-  return roleAllows(useGroupRole(groupId), perm);
 }
 
 /* ---------- modal ---------- */

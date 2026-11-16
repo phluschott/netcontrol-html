@@ -77,27 +77,30 @@ export interface User extends Meta {
   name: string;
   call: string;
   email: string;
+  /** Global Admin: can do everything, and is the only one who manages users and roles. */
+  isAdmin: boolean;
 }
 
-export type GroupRole = 'owner' | 'admin' | 'operator' | 'viewer';
-export const GROUP_ROLE_LABEL: Record<GroupRole, string> = {
-  owner: 'Owner',
-  admin: 'Admin',
-  operator: 'Operator',
-  viewer: 'Viewer',
-};
-
+/** A user's roles in one group. roleIds are built-in role ids (see acl.ts) or CustomRole ids. */
 export interface GroupAccess extends Meta {
   groupId: ID;
   userId: ID;
-  role: GroupRole;
+  roleIds: string[];
+}
+
+/** A position an Admin defines for one group, built from the permission list. */
+export interface CustomRole extends Meta {
+  groupId: ID;
+  name: string;
+  description: string;
+  permissions: import('./acl').Permission[];
 }
 
 export interface AuditEntry {
   id: ID;
   at: string;
   userId: ID;
-  entity: 'station' | 'group' | 'membership' | 'groupAccess' | 'user' | 'backup';
+  entity: 'station' | 'group' | 'membership' | 'groupAccess' | 'role' | 'user' | 'backup';
   entityId: ID;
   action: 'create' | 'update' | 'delete' | 'restore' | 'import';
   changes: Record<string, [unknown, unknown]> | null;

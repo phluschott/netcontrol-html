@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useDirectory } from '../data/queries';
+import { useDirectory, myRoleLabel } from '../data/queries';
 import { createGroup } from '../data/services';
-import { GROUP_ROLE_LABEL, GROUP_TYPE_LABEL } from '../data/types';
+import { GROUP_TYPE_LABEL } from '../data/types';
 import { GroupFormModal } from '../ui/forms';
 
 export default function GroupsPage() {
@@ -15,7 +15,7 @@ export default function GroupsPage() {
     <>
       <div className="page-head">
         <div><div className="eyebrow">Organization</div><h1>Groups</h1></div>
-        <button className="primary" onClick={() => setCreating(true)}>+ New Group</button>
+        {dir.isAdmin && <button className="primary" onClick={() => setCreating(true)}>+ New Group</button>}
       </div>
       <div className="panel">
         <div className="table-wrap">
@@ -24,7 +24,7 @@ export default function GroupsPage() {
             <tbody>
               {dir.groups.map((g) => {
                 const ms = (dir.membershipsByGroup.get(g.id) ?? []).filter((m) => m.active);
-                const role = dir.roleByGroup.get(g.id);
+                const role = myRoleLabel(dir, g.id);
                 return (
                   <tr key={g.id} className="clickable" onClick={() => nav(`/groups/${g.id}`)}>
                     <td><Link to={`/groups/${g.id}`} className="call" onClick={(e) => e.stopPropagation()}>{g.name}</Link>{g.description && <div className="muted">{g.description}</div>}</td>
@@ -33,7 +33,7 @@ export default function GroupsPage() {
                     <td>{ms.length}</td>
                     <td>{ms.filter((m) => m.roles.includes('spotter')).length || <span className="muted">–</span>}</td>
                     <td>{ms.filter((m) => m.roles.includes('ncs')).length || <span className="muted">–</span>}</td>
-                    <td>{role ? <span className={'chip ' + (role === 'owner' || role === 'admin' ? 'green' : '')}>{GROUP_ROLE_LABEL[role]}</span> : <span className="muted">–</span>}</td>
+                    <td>{role ? <span className={'chip ' + (dir.isAdmin ? 'green' : '')}>{role}</span> : <span className="muted">–</span>}</td>
                   </tr>
                 );
               })}
@@ -43,7 +43,7 @@ export default function GroupsPage() {
             <div className="empty">
               <p>No groups yet. A group is a Skywarn team, club, ARES unit, or traffic net.</p>
               <p>Create one, then add members by hand or import a CSV. Stations already in the directory are reused, never duplicated.</p>
-              <button className="primary" onClick={() => setCreating(true)}>+ New Group</button>
+              {dir.isAdmin ? <button className="primary" onClick={() => setCreating(true)}>+ New Group</button> : <p>Only an Admin can create groups.</p>}
             </div>
           )}
         </div>

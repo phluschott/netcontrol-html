@@ -30,7 +30,7 @@ export function validateBackup(data: unknown): BackupFile {
 
 /** Replace everything in this browser with the backup. The current user is kept signed in if present in the backup. */
 export async function restoreAll(data: unknown): Promise<{ stations: number; groups: number; memberships: number }> {
-  const f = validateBackup(data);
+  const f = upgradeBackup(validateBackup(data));
   const keepUser = await getMeta<string>('currentUserId');
   await db.transaction('rw', TABLES.map((t) => db.table(t)), async () => {
     for (const t of TABLES) await db.table(t).clear();
@@ -38,10 +38,32 @@ export async function restoreAll(data: unknown): Promise<{ stations: number; gro
       const rows = f.tables[t];
       if (Array.isArray(rows) && rows.length) await db.table(t).bulkAdd(rows);
     }
-    const users = (f.tables.users ?? []) as { id: string }[];
+    const users = (f.tables.users ?? []) as { id: string; isAdmin?: boolean; deletedAt?: string | null }[];
     if (keepUser && users.some((u) => u.id === keepUser)) await setMeta('currentUserId', keepUser);
+    // Never leave the app without an Admin: if the backup has none, the person restoring becomes Admin.
+    if (!users.some((u) => u.isAdmin && !u.deletedAt)) {
+      const me = (await getMeta<string>('currentUserId')) ?? users[0]?.id;
+      if (me && (await db.users.get(me))) await db.users.update(me, { isAdmin: true });
+    }
   });
   const uid = await currentUserId();
   await audit(uid, 'backup', 'restore', 'restore', null, `Restored backup from ${f.exportedAt}`);
   return { stations: f.tables.stations.length, groups: f.tables.groups.length, memberships: f.tables.memberships.length };
+}
+
+/** Bring backups made before positions existed (owner/admin/operator/viewer roles) up to date. */
+function upgradeBackup(f: BackupFile): BackupFile {
+  const access = (f.tables.groupAccess ?? []) as Record<string, unknown>[];
+  const users = (f.tables.users ?? []) as Record<string, unknown>[];
+  const admins = new Set(access.filter((a) => a.role === 'owner' || a.role === 'admin').map((a) => a.userId));
+  const map: Record<string, string> = { owner: 'net_controller', admin: 'net_controller', operator: 'net_controller', viewer: 'standard' };
+  return {
+    ...f,
+    tables: {
+      ...f.tables,
+      users: users.map((u) => ({ ...u, isAdmin: u.isAdmin === true || admins.has(u.id) })),
+      groupAccess: access.map(({ role, ...a }) => ({ ...a, roleIds: Array.isArray(a.roleIds) ? a.roleIds : [map[role as string] ?? 'standard'] })),
+      roles: f.tables.roles ?? [],
+    },
+  };
 }

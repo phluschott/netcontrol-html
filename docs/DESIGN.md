@@ -69,24 +69,35 @@ Users are people who use the app; stations are radio stations. A user may be lin
 
 | Record | Fields |
 |---|---|
-| `User` | `name`, `call` (optional), `email` (optional) |
-| `GroupAccess` | `groupId`, `userId`, `role` |
+| `User` | `name`, `call` (optional), `email` (optional), `isAdmin` |
+| `GroupAccess` | `groupId`, `userId`, `roleIds` (one or more) |
+| `CustomRole` | `groupId`, `name`, `description`, `permissions` |
 | `AuditEntry` | `at`, `userId`, `entity`, `entityId`, `action`, `changes` |
 
-Group roles and permissions:
+**Rules**
+- **Admin is global.** An Admin can do everything in every group. Only an Admin creates groups, manages users, assigns positions, and creates custom positions. There is always at least one Admin.
+- **Everything else is per group.** A user holds one or more positions in a group; their permissions there are the union of those positions. No per-net permissions.
+- **Built-in positions are fixed.** Admins create custom positions per group from the permission list below. User and position management can never be given to a position.
+- **Everyone** can edit their own profile, see their own check-ins, and delete their own messages (account level, not a group permission).
 
-| Permission | owner | admin | operator | viewer |
-|---|---|---|---|---|
-| View group, members, history | ✓ | ✓ | ✓ | ✓ |
-| Run and log nets *(nets phase)* | ✓ | ✓ | ✓ | |
-| Add, edit, remove members; import | ✓ | ✓ | | |
-| Edit group settings | ✓ | ✓ | | |
-| Manage user access | ✓ | ✓ | | |
-| Delete group | ✓ | | | |
+| Permission | Net Controller | Moderator | Standard User |
+|---|:-:|:-:|:-:|
+| View the member list (call sign and name) | ✓ | ✓ | ✓ |
+| Add, edit, remove, and import members | ✓ | | |
+| Edit members' station records | ✓ | | |
+| Start and run nets; log check-ins, notes, and reports | ✓ | | |
+| Edit or delete check-ins and log entries | ✓ | | |
+| Set up nets (schedule, script, repeaters) | ✓ | | |
+| View net logs and history; export | ✓ | ✓ | ✓ |
+| Edit group settings | ✓ | | |
+| Delete the group | ✓ | | |
+| Post to message boards | ✓ | ✓ | ✓ |
+| Moderate messages (delete or edit others' posts, pin, lock) | ✓ | ✓ | |
+| Create and manage message boards | ✓ | ✓ | |
 
-Stations are shared across groups. A user may edit a station if they hold `admin` or higher in any group the station belongs to, or created it. Every write goes through one service layer that checks permissions and records an audit entry, so the same rules can later be enforced server-side.
+Standard Users never see other members' contact details. Every write goes through one service layer that checks permissions and records an audit entry, so the same rules can later be enforced server-side.
 
-Today there is one local user, created on first run, who owns every group they create.
+Today there is one local user, who is the Admin.
 
 ### Nets, sessions, log entries
 **To be designed together before implementation.** Known requirements so far:
@@ -94,8 +105,7 @@ Today there is one local user, created on first run, who owns every group they c
 - Check-in net screen differs from a Skywarn activation screen.
 - Skywarn reports need a "Relayed to NWS?" checkbox (the person beside net control relays; the app does not contact NWS).
 - Station page will show every check-in, note, and storm report for that station.
-- **Check-in edits and deletes are admin-only.** Standard users (members) can never delete a check-in, including their own. Group admins (and owners) can edit or delete check-ins; every edit and delete is recorded in the change log (see WISHLIST item 2).
-  - *To discuss with nets:* whether net control operators (the `operator` role) can fix their own typos during a live net, or only admins.
+- **Check-in edits and deletes**: Admins and Net Controllers (permission `nets.editLog`) only. Standard Users can never delete a check-in, including their own. Every edit and delete is recorded in the change log.
 
 ## Screens (Phase 1)
 

@@ -1,9 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useDirectory, searchStations, stationLocation, distinctOnAirName } from '../data/queries';
+import { useDirectory, searchStations, stationLocation, distinctOnAirName, hasPerm } from '../data/queries';
 import { addMembership, createStation, emptyStation } from '../data/services';
 import { STATION_STATUS_LABEL, type StationStatus } from '../data/types';
-import { roleAllows } from '../data/acl';
 import { StationFormModal } from '../ui/forms';
 import { Highlight, useAction } from '../ui/common';
 import { downloadText, toCsv } from '../lib/csv';
@@ -30,7 +29,7 @@ export default function StationsPage() {
   }, [dir, q, status, groupId]);
 
   if (!dir) return null;
-  const manageable = dir.groups.filter((g) => roleAllows(dir.roleByGroup.get(g.id), 'members.manage'));
+  const manageable = dir.groups.filter((g) => hasPerm(dir, g.id, 'members.manage'));
 
   const exportCsv = () => downloadText('stations.csv', toCsv([
     ['call', 'name', 'on_air_name', 'city', 'county', 'state', 'grid', 'status', 'groups', 'previous_calls', 'notes'],

@@ -1,7 +1,8 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, live } from './db';
 import { callMatchRank } from '../lib/callsign';
-import type { Group, GroupRole, ID, Membership, Station } from './types';
+import type { Group, ID, Membership, Station } from './types';
+import { ALL_PERMISSIONS, BUILT_IN_ROLES, isBuiltInRole, permissionsOf, type Permission, type RoleDef } from './acl';
 
 export interface Directory {
   stations: Station[];
@@ -9,16 +10,24 @@ export interface Directory {
   groupById: Map<ID, Group>;
   membershipsByStation: Map<ID, Membership[]>;
   membershipsByGroup: Map<ID, Membership[]>;
-  roleByGroup: Map<ID, GroupRole>;
+  isAdmin: boolean;
+  /** The current user's permissions per group (all permissions everywhere for an Admin). */
+  permsByGroup: Map<ID, Set<Permission>>;
+  /** The current user's role names per group. */
+  rolesByGroup: Map<ID, RoleDef[]>;
 }
 
 /** Everything the directory screens need, kept live. */
 export function useDirectory(): Directory | undefined {
   return useLiveQuery(async () => {
-    const [stations, groups, memberships, meta] = await Promise.all([
-      db.stations.toArray(), db.groups.toArray(), db.memberships.toArray(), db.meta.get('currentUserId'),
+    const [stations, groups, memberships, meta, customRoles] = await Promise.all([
+      db.stations.toArray(), db.groups.toArray(), db.memberships.toArray(), db.meta.get('currentUserId'), db.roles.toArray(),
     ]);
-    const access = meta ? live(await db.groupAccess.where('userId').equals(meta.value as string).toArray()) : [];
+    const uid = meta?.value as string | undefined;
+    const user = uid ? await db.users.get(uid) : undefined;
+    const isAdmin = !!user && !user.deletedAt && user.isAdmin === true;
+    const access = uid ? live(await db.groupAccess.where('userId').equals(uid).toArray()) : [];
+    const customById = new Map(live(customRoles).map((r) => [r.id, r]));
     const liveGroups = live(groups).sort((a, b) => a.name.localeCompare(b.name));
     const groupById = new Map(liveGroups.map((g) => [g.id, g]));
     const membershipsByStation = new Map<ID, Membership[]>();
@@ -34,7 +43,22 @@ export function useDirectory(): Directory | undefined {
       groupById,
       membershipsByStation,
       membershipsByGroup,
-      roleByGroup: new Map(access.map((a) => [a.groupId, a.role])),
+      isAdmin,
+      ...(() => {
+        const rolesByGroup = new Map<ID, RoleDef[]>();
+        const permsByGroup = new Map<ID, Set<Permission>>();
+        for (const a of access) {
+          const defs: RoleDef[] = a.roleIds.map((id) => {
+            if (isBuiltInRole(id)) return BUILT_IN_ROLES[id];
+            const r = customById.get(id);
+            return r && r.groupId === a.groupId ? { id: r.id, name: r.name, permissions: r.permissions, builtIn: false, description: r.description } : null;
+          }).filter((x): x is RoleDef => !!x);
+          rolesByGroup.set(a.groupId, defs);
+          permsByGroup.set(a.groupId, permissionsOf(defs));
+        }
+        if (isAdmin) for (const g of liveGroups) permsByGroup.set(g.id, new Set(ALL_PERMISSIONS));
+        return { rolesByGroup, permsByGroup };
+      })(),
     };
   });
 }
@@ -61,4 +85,13 @@ export function distinctOnAirName(s: Pick<Station, 'name' | 'onAirName'>): strin
   if (!s.onAirName) return '';
   const first = s.name.trim().split(/\s+/)[0] ?? '';
   return s.onAirName.toLowerCase() === first.toLowerCase() || s.onAirName.toLowerCase() === s.name.toLowerCase() ? '' : s.onAirName;
+}
+
+/** Whether the current user holds a permission in a group. */
+export const hasPerm = (dir: Directory, groupId: ID, perm: Permission) => dir.permsByGroup.get(groupId)?.has(perm) ?? false;
+
+/** A short label for the current user's standing in a group. */
+export function myRoleLabel(dir: Directory, groupId: ID): string {
+  const names = (dir.rolesByGroup.get(groupId) ?? []).map((r) => r.name);
+  return dir.isAdmin ? ['Admin', ...names].join(', ') : names.join(', ');
 }

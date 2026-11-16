@@ -61,7 +61,7 @@ export default function SettingsPage() {
                 <div><label>Call sign</label><input className="call-input" value={call} maxLength={8} onChange={(e) => setCall(cleanCallInput(e.target.value).replace('/', ''))} /></div>
               </div>
               <div className="row"><button className="primary" onClick={() => run(() => updateCurrentUser({ name, call }), 'Saved')}>Save</button></div>
-              <div className="hint">You are the only user on this browser and own every group you create. When accounts are added, this becomes your profile.</div>
+              <div className="hint">{user?.isAdmin ? 'You are the Admin: you create groups, define positions, and manage who holds them. ' : ''}When member logins are added, this becomes your profile.</div>
             </div>
           </div>
           <div className="panel">

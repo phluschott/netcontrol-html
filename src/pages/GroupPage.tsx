@@ -1,18 +1,17 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, live } from '../data/db';
-import { useDirectory, searchStations, stationLocation, distinctOnAirName } from '../data/queries';
+import { useDirectory, searchStations, stationLocation, distinctOnAirName, hasPerm, myRoleLabel } from '../data/queries';
 import {
   addStationToGroup, deleteGroup, emptyMembership, findStationByCall, removeMembership, updateGroup, updateMembership,
 } from '../data/services';
-import { PERMISSION_LABEL, permissionsFor, roleAllows } from '../data/acl';
-import { GROUP_ROLE_LABEL, GROUP_TYPE_LABEL, MEMBER_ROLE_LABEL, type Membership, type MembershipFields, type MemberRole, type Station } from '../data/types';
+import { GROUP_TYPE_LABEL, MEMBER_ROLE_LABEL, type Membership, type MembershipFields, type MemberRole, type Station } from '../data/types';
 import { GroupFormModal, MembershipEditor, MembershipModal, RoleChips } from '../ui/forms';
 import { Highlight, Modal, fmtDate, useAction } from '../ui/common';
 import { baseCall, callError, cleanCallInput } from '../lib/callsign';
 import { downloadText, toCsv } from '../lib/csv';
 import ImportModal from './ImportModal';
+import AccessPanel from './AccessPanel';
 
 type RoleFilter = 'all' | MemberRole | 'inactive';
 
@@ -21,11 +20,6 @@ export default function GroupPage() {
   const nav = useNavigate();
   const run = useAction();
   const dir = useDirectory();
-  const access = useLiveQuery(async () => {
-    const rows = live(await db.groupAccess.where('groupId').equals(id).toArray());
-    const users = await db.users.bulkGet(rows.map((r) => r.userId));
-    return rows.map((r, i) => ({ ...r, user: users[i] }));
-  }, [id]);
   const [q, setQ] = useState('');
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
   const [editing, setEditing] = useState(false);
@@ -49,10 +43,11 @@ export default function GroupPage() {
   if (!dir) return null;
   if (!group) return <div className="panel"><div className="empty">Group not found. <Link to="/groups">Back to groups</Link></div></div>;
 
-  const role = dir.roleByGroup.get(id);
-  const canManage = roleAllows(role, 'members.manage');
-  const canEdit = roleAllows(role, 'group.edit');
-  const canDelete = roleAllows(role, 'group.delete');
+  const role = myRoleLabel(dir, id);
+  const canManage = hasPerm(dir, id, 'members.manage');
+  const canEdit = hasPerm(dir, id, 'group.edit');
+  const canDelete = hasPerm(dir, id, 'group.delete');
+  const canSeeMembers = hasPerm(dir, id, 'members.view');
   const activeCount = members.filter((x) => x.m.active).length;
 
   const exportCsv = () => downloadText(`${group.name.replace(/\W+/g, '_')}_members.csv`, toCsv([
@@ -68,7 +63,7 @@ export default function GroupPage() {
           <div className="row" style={{ alignItems: 'baseline' }}>
             <h1>{group.name}</h1>
             <span className="chip">{GROUP_TYPE_LABEL[group.type]}</span>
-            {role && <span className="chip green">You: {GROUP_ROLE_LABEL[role]}</span>}
+            {role && <span className="chip green">You: {role}</span>}
           </div>
           {group.description && <div className="muted">{group.description}</div>}
         </div>
@@ -106,7 +101,7 @@ export default function GroupPage() {
             <table>
               <thead><tr><th>Call</th><th>Name</th><th>Location</th><th>Roles</th><th>Spotter ID</th><th>Joined</th><th /></tr></thead>
               <tbody>
-                {shown.map(({ m, s }) => (
+                {canSeeMembers && shown.map(({ m, s }) => (
                   <tr key={m.id} className={'clickable' + (m.active && s.status === 'active' ? '' : ' inactive')} onClick={() => nav(`/stations/${s.call}`)}>
                     <td className="call"><Highlight text={s.call} q={q.toUpperCase().replace(/[^A-Z0-9]/g, '')} />{s.status === 'sk' && <span className="chip" style={{ marginLeft: 6 }}>SK</span>}</td>
                     <td>{s.name || s.onAirName}{distinctOnAirName(s) && <span className="muted"> “{distinctOnAirName(s)}”</span>}</td>
@@ -122,7 +117,8 @@ export default function GroupPage() {
                 ))}
               </tbody>
             </table>
-            {!shown.length && <div className="empty">{members.length ? 'No members match.' : 'No members yet. Add them one at a time, or import a CSV.'}</div>}
+            {canSeeMembers && !shown.length && <div className="empty">{members.length ? 'No members match.' : 'No members yet. Add them one at a time, or import a CSV.'}</div>}
+            {!canSeeMembers && <div className="empty">Your position in this group does not include viewing the member list.</div>}
           </div>
         </div>
 
@@ -144,19 +140,7 @@ export default function GroupPage() {
             <div className="panel-header"><span className="panel-title">Nets</span></div>
             <div className="empty">Nets for this group come next. We will design them together first.</div>
           </div>
-          <div className="panel">
-            <div className="panel-header"><span className="panel-title">Access</span></div>
-            <div className="panel-body">
-              {(access ?? []).map((a) => (
-                <div key={a.id} className="row between" style={{ marginBottom: 6 }}>
-                  <span>{a.user?.name || 'Unknown user'}{a.user?.call && <span className="muted"> {a.user.call}</span>}</span>
-                  <span className="chip green">{GROUP_ROLE_LABEL[a.role]}</span>
-                </div>
-              ))}
-              {role && <div className="hint">As {GROUP_ROLE_LABEL[role]}: {permissionsFor(role).map((p) => PERMISSION_LABEL[p].toLowerCase()).join('; ')}.</div>}
-              <div className="hint">Sharing with other users becomes available when accounts are added. Roles are already enforced on every change.</div>
-            </div>
-          </div>
+          <AccessPanel group={group} dir={dir} />
         </div>
       </div>
 

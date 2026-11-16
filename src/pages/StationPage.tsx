@@ -2,11 +2,10 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../data/db';
-import { useDirectory, stationLocation, distinctOnAirName } from '../data/queries';
+import { useDirectory, stationLocation, distinctOnAirName, hasPerm } from '../data/queries';
 import {
   addMembership, canEditStation, deleteStation, emptyMembership, findStationByCall, removeMembership, updateMembership, updateStation,
 } from '../data/services';
-import { roleAllows } from '../data/acl';
 import { GROUP_TYPE_LABEL, STATION_STATUS_LABEL, type Membership } from '../data/types';
 import { MembershipModal, RoleChips, StationFormModal } from '../ui/forms';
 import { fmtDate, fmtDateTime, useAction } from '../ui/common';
@@ -47,7 +46,7 @@ export default function StationPage() {
   }
 
   const memberships = (dir.membershipsByStation.get(station.id) ?? []).slice().sort((a, b) => (dir.groupById.get(a.groupId)?.name ?? '').localeCompare(dir.groupById.get(b.groupId)?.name ?? ''));
-  const joinable = dir.groups.filter((g) => roleAllows(dir.roleByGroup.get(g.id), 'members.manage') && !memberships.some((m) => m.groupId === g.id));
+  const joinable = dir.groups.filter((g) => hasPerm(dir, g.id, 'members.manage') && !memberships.some((m) => m.groupId === g.id));
 
   return (
     <>
@@ -125,7 +124,7 @@ export default function StationPage() {
                 <tbody>
                   {memberships.map((m) => {
                     const g = dir.groupById.get(m.groupId)!;
-                    const manage = roleAllows(dir.roleByGroup.get(g.id), 'members.manage');
+                    const manage = hasPerm(dir, g.id, 'members.manage');
                     return (
                       <tr key={m.id} className={m.active ? '' : 'inactive'}>
                         <td><Link to={`/groups/${g.id}`}>{g.name}</Link>{m.notes && <div className="muted">{m.notes}</div>}</td>

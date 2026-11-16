@@ -8,7 +8,7 @@ import { baseCall, callError } from '../lib/callsign';
 import { parseCsv } from '../lib/csv';
 import {
   audit, currentUserId, emptyMembership, emptyStation, newMeta, normalizeStation, nowIso, requirePerm,
-  upsertMembershipTx, diff, STATION_KEYS,
+  upsertMembershipTx, diff, STATION_KEYS, permTables,
 } from './services';
 import { MEMBER_ROLES, MEMBER_ROLE_LABEL, type ID, type MemberRole, type Station, type StationFields } from './types';
 
@@ -180,7 +180,7 @@ export interface ImportResult { created: number; added: number; updated: number;
 export async function applyImport(groupId: ID, plan: ImportPlan, choices: ConflictChoices = {}): Promise<ImportResult> {
   const userId = await currentUserId();
   const result: ImportResult = { created: 0, added: 0, updated: 0, skipped: 0 };
-  await db.transaction('rw', [db.stations, db.memberships, db.groupAccess, db.groups, db.audit, db.meta], async () => {
+  await db.transaction('rw', [db.stations, db.memberships, db.groups, db.audit, ...permTables()], async () => {
     await requirePerm('members.manage', groupId, userId);
     const group = await db.groups.get(groupId);
     if (!group || group.deletedAt) throw new Error('Group not found.');
