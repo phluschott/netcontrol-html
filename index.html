@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Net Controller – Amateur Radio Net Logging</title>
+<style>
+  :root {
+    --bg: #111111; --panel: #1a1a1a; --field: #262626; --line: #333;
+    --text: #f2f2f2; --muted: #9a9a9a; --accent: #1d4ed8; --accent-h: #2563eb;
+    --ok: #22c55e; --warn: #f59e0b; --bad: #ef4444;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.4 Inter, system-ui, sans-serif; }
+  header { background: #181818; border-bottom: 1px solid var(--line); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 20px; } header h1 small { font-size: 11px; color: var(--muted); font-weight: 500; }
+  main { max-width: 1000px; margin: 0 auto; padding: 24px 16px 60px; }
+  h2 { margin: 0 0 16px; font-size: 26px; }
+  h3 { margin: 28px 0 14px; font-size: 17px; display: flex; align-items: center; gap: 12px; }
+  h3::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
+  .card { background: var(--panel); border-radius: 10px; padding: 24px; }
+  label { display: block; font-size: 13px; color: #d0d0d0; margin-bottom: 6px; }
+  .req { color: var(--bad); }
+  input, select, textarea { width: 100%; background: var(--field); color: var(--text); border: 1px solid transparent; border-radius: 6px; padding: 11px 12px; font: inherit; }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent-h); }
+  input::placeholder, textarea::placeholder { color: #707070; }
+  .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); margin-bottom: 16px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  button { background: #2b2b2b; color: var(--text); border: 0; border-radius: 6px; padding: 10px 18px; font: inherit; font-weight: 600; cursor: pointer; }
+  button:hover { background: #383838; }
+  button.primary { background: var(--accent); } button.primary:hover { background: var(--accent-h); }
+  button.danger { background: #7f1d1d; } button.danger:hover { background: #991b1b; }
+  button.small { padding: 4px 10px; font-size: 12px; }
+  .hidden { display: none !important; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .modes { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .mode { background: var(--field); border: 2px solid transparent; border-radius: 8px; padding: 14px; cursor: pointer; }
+  .mode input { width: auto; margin-right: 8px; } .mode.sel { border-color: var(--accent-h); }
+  .mode b { display: block; margin-bottom: 4px; }
+  .bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .stats { display: flex; gap: 10px; flex-wrap: wrap; }
+  .stat { background: var(--field); border-radius: 8px; padding: 8px 14px; text-align: center; min-width: 84px; }
+  .stat b { display: block; font-size: 20px; } .stat span { font-size: 11px; color: var(--muted); text-transform: uppercase; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 700; background: #333; }
+  .badge.live { background: #14532d; color: #86efac; } .badge.closed { background: #4b1d1d; color: #fca5a5; }
+  .badge.Emergency { background: #7f1d1d; color: #fecaca; } .badge.Priority { background: #78350f; color: #fde68a; }
+  .badge.Routine { background: #1e3a8a; color: #bfdbfe; }
+  .callin { position: relative; }
+  #callInput { font-size: 24px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; padding: 14px; }
+  #suggest { position: absolute; left: 0; right: 0; top: 100%; z-index: 10; background: #222; border: 1px solid var(--line); border-radius: 6px; margin-top: 4px; max-height: 300px; overflow-y: auto; box-shadow: 0 8px 24px #000a; }
+  .sg { padding: 9px 14px; cursor: pointer; display: flex; gap: 14px; align-items: baseline; }
+  .sg:hover, .sg.act { background: #2f3b5c; }
+  .sg b { font-size: 17px; letter-spacing: 1px; min-width: 90px; } .sg.add b { color: var(--ok); }
+  mark { background: none; color: #60a5fa; }
+  .err { color: var(--bad); font-size: 13px; min-height: 18px; margin-top: 6px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); font-size: 14px; vertical-align: top; }
+  th { color: var(--muted); font-size: 12px; text-transform: uppercase; }
+  td.call { font-weight: 700; letter-spacing: 1px; }
+  .tablewrap { overflow-x: auto; }
+  details { margin-top: 12px; } summary { cursor: pointer; color: var(--muted); }
+  footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px; }
+  @media print { header, .noprint, footer { display: none !important; } body { background: #fff; color: #000; } .card { background: #fff; } th, td { color: #000; border-color: #999; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>📻 Net Controller <small>LOCAL · NO ACCOUNT NEEDED</small></h1>
+  <div class="row noprint">
+    <button id="btnHistory">Past Nets</button>
+    <button id="btnNew">New Net</button>
+  </div>
+</header>
+
+<main>
+<!-- ============ SETUP VIEW ============ -->
+<section id="setupView">
+  <h2>Create New NET</h2>
+  <form id="setupForm" class="card" autocomplete="off">
+    <div style="margin-bottom:16px"><label>NET Name <span class="req">*</span></label><input id="netName" required placeholder="e.g., Tuesday Evening Skywarn Net" /></div>
+    <div style="margin-bottom:16px"><label>Description (Optional)</label><textarea id="netDesc" rows="2" placeholder="A short summary of what this NET is about."></textarea></div>
+    <div class="grid">
+      <div><label>Type of NET</label>
+        <select id="netType"><option>Skywarn</option><option>Technical</option><option>Emergency</option><option>Social / Ragchew</option><option>Training</option><option>Other</option></select></div>
+      <div><label>Net Control Call Sign <span class="req">*</span></label><input id="ncs" required placeholder="e.g., K9TWX" maxlength="8" style="text-transform:uppercase" /></div>
+    </div>
+
+    <h3>Frequency / Repeater</h3>
+    <div class="grid">
+      <div><label>Repeater / System Name</label><input id="repName" placeholder="e.g., Spring Mountain" /></div>
+      <div><label>Downlink Freq (MHz)</label><input id="repFreq" placeholder="e.g., 145.130" /></div>
+      <div><label>Offset (MHz)</label><input id="repOff" placeholder="e.g., -0.600" /></div>
+      <div><label>PL Tone (Hz)</label><input id="repTone" placeholder="e.g., 156.7" /></div>
+    </div>
+
+    <h3>Check-in Mode</h3>
+    <div class="modes">
+      <label class="mode sel" id="modeFree"><b><input type="radio" name="mode" value="free" checked />Free Entry</b><span class="muted">Type any call sign (4–8 letters &amp; numbers) as stations check in.</span></label>
+      <label class="mode" id="modeRoster"><b><input type="radio" name="mode" value="roster" />Roster Lookup</b><span class="muted">Upload a list of call signs. Matches narrow as you type, with an option to add a new call sign not on the list.</span></label>
+    </div>
+    <div id="rosterBox" class="hidden" style="margin-top:16px">
+      <label>Roster file (.csv or .txt — one call sign per line, or <code>callsign,name,location</code>)</label>
+      <input type="file" id="rosterFile" accept=".csv,.txt,.tsv,text/plain,text/csv" />
+      <div class="muted" id="rosterInfo" style="margin-top:6px"></div>
+      <details><summary>Or paste a list</summary><textarea id="rosterPaste" rows="4" placeholder="K9TWX,Kevin,Chicago&#10;W9ABC,Sam,Peoria"></textarea><button type="button" id="rosterLoad" class="small" style="margin-top:8px">Load pasted list</button></details>
+    </div>
+
+    <div class="row" style="justify-content:flex-end;margin-top:28px;border-top:1px solid var(--line);padding-top:20px">
+      <button type="button" id="cancelSetup" class="hidden">Cancel</button>
+      <button type="submit" class="primary">Start NET</button>
+    </div>
+  </form>
+</section>
+
+<!-- ============ NET VIEW ============ -->
+<section id="netView" class="hidden">
+  <div class="bar">
+    <div>
+      <h2 id="vName" style="margin-bottom:4px"></h2>
+      <div class="muted"><span id="vBadge" class="badge live">LIVE</span> <span id="vMeta"></span></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><b id="sCount">0</b><span>Check-ins</span></div>
+      <div class="stat"><b id="sTraffic">0</b><span>Traffic</span></div>
+      <div class="stat"><b id="sClock">0:00</b><span>Elapsed</span></div>
+    </div>
+  </div>
+
+  <div class="card noprint" id="entryCard">
+    <div class="callin">
+      <label id="callLabel">Call Sign</label>
+      <input id="callInput" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="8" placeholder="Type call sign…" />
+      <div id="suggest" class="hidden"></div>
+    </div>
+    <div class="err" id="callErr"></div>
+    <div class="grid" style="margin-top:8px">
+      <div><label>Name</label><input id="fName" /></div>
+      <div><label>Location / County</label><input id="fLoc" /></div>
+      <div><label>Check-in Type</label><select id="fKind"><option>Regular</option><option>Visitor</option><option>Short Time</option><option>Relay</option><option>Mobile</option></select></div>
+      <div><label>Traffic</label><select id="fTraffic"><option>None</option><option>Routine</option><option>Priority</option><option>Emergency</option></select></div>
+    </div>
+    <div class="grid" id="wxRow"><div style="grid-column:1/-1"><label>Comments / Weather Report</label><input id="fNote" placeholder="e.g., 1&quot; hail, 3 mi N of town" /></div></div>
+    <div class="row"><button class="primary" id="btnAdd">Log Check-in (Enter)</button><span class="muted" id="modeHint"></span></div>
+  </div>
+
+  <h3>Check-in Log</h3>
+  <div class="tablewrap card" style="padding:8px">
+    <table>
+      <thead><tr><th>#</th><th>Time</th><th>Call</th><th>Name</th><th>Location</th><th>Type</th><th>Traffic</th><th>Notes</th><th class="noprint"></th></tr></thead>
+      <tbody id="logBody"></tbody>
+    </table>
+    <div class="muted" id="emptyLog" style="padding:16px">No check-ins yet.</div>
+  </div>
+
+  <div class="row noprint" style="margin-top:20px">
+    <button id="btnCsv">Export CSV</button>
+    <button id="btnPrint">Print / PDF</button>
+    <button id="btnRosterDl" class="hidden">Download Roster</button>
+    <span style="flex:1"></span>
+    <button id="btnClose" class="danger">Close NET</button>
+    <button id="btnReopen" class="hidden">Reopen NET</button>
+  </div>
+</section>
+
+<!-- ============ HISTORY VIEW ============ -->
+<section id="histView" class="hidden">
+  <h2>Past Nets</h2>
+  <div class="card"><div id="histList"></div></div>
+</section>
+</main>
+<footer>Data is stored only in this browser (localStorage). Export CSV to keep a copy.</footer>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const CALL_RE = /^[A-Z0-9]{4,8}$/;
+const KEY = 'netcontrol.v1';
+const store = (() => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } })();
+store.nets = store.nets || []; store.roster = store.roster || []; store.currentId = store.currentId || null;
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch {} };
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtTime = iso => new Date(iso).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+const cur = () => store.nets.find(n => n.id === store.currentId);
+
+function show(view) { ['setupView','netView','histView'].forEach(v => $(v).classList.toggle('hidden', v !== view)); }
+
+/* ---------- Setup ---------- */
+document.querySelectorAll('input[name=mode]').forEach(r => r.addEventListener('change', () => {
+  const roster = document.querySelector('input[name=mode]:checked').value === 'roster';
+  $('modeFree').classList.toggle('sel', !roster); $('modeRoster').classList.toggle('sel', roster);
+  $('rosterBox').classList.toggle('hidden', !roster);
+}));
+
+function parseRoster(text) {
+  const out = new Map();
+  text.split(/\r?\n/).forEach((line, i) => {
+    const parts = line.split(/[,;\t]/).map(s => s.trim().replace(/^"|"$/g, ''));
+    const call = (parts[0] || '').toUpperCase();
+    if (!CALL_RE.test(call) || (i === 0 && /^CALL/.test(call) && /name|loc/i.test(line))) return; // skip header/blank/junk
+    if (!out.has(call)) out.set(call, { call, name: parts[1] || '', loc: parts[2] || '' });
+  });
+  return [...out.values()];
+}
+function setRoster(list) {
+  store.roster = list; save();
+  $('rosterInfo').textContent = list.length ? `${list.length} call signs loaded.` : 'No valid call signs found.';
+}
+$('rosterFile').addEventListener('change', async e => { const f = e.target.files[0]; if (f) setRoster(parseRoster(await f.text())); });
+$('rosterLoad').addEventListener('click', () => setRoster(parseRoster($('rosterPaste').value)));
+if (store.roster.length) $('rosterInfo').textContent = `${store.roster.length} call signs already loaded from last time (upload to replace).`;
+
+$('setupForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const ncs = $('ncs').value.trim().toUpperCase();
+  if (!CALL_RE.test(ncs)) { alert('Net control call sign must be 4–8 letters/numbers.'); return; }
+  const mode = document.querySelector('input[name=mode]:checked').value;
+  if (mode === 'roster' && !store.roster.length) { alert('Load a roster first, or choose Free Entry.'); return; }
+  const net = { id: uid(), name: $('netName').value.trim(), desc: $('netDesc').value.trim(), type: $('netType').value, ncs, mode,
+    repeater: { name: $('repName').value, freq: $('repFreq').value, off: $('repOff').value, tone: $('repTone').value },
+    start: new Date().toISOString(), end: null, checkins: [] };
+  store.nets.unshift(net); store.currentId = net.id; save(); openNet();
+});
+$('btnNew').addEventListener('click', () => { $('setupForm').reset(); $('cancelSetup').classList.toggle('hidden', !cur()); show('setupView'); });
+$('cancelSetup').addEventListener('click', () => cur() ? openNet() : show('setupView'));
+
+/* ---------- Net view ---------- */
+let timer;
+function openNet() {
+  const n = cur(); if (!n) return show('setupView');
+  show('netView'); $('vName').textContent = n.name;
+  const r = n.repeater;
+  $('vMeta').textContent = [n.type, `NCS ${n.ncs}`, r.name, r.freq && r.freq + ' MHz', r.off, r.tone && r.tone + ' Hz', new Date(n.start).toLocaleDateString()].filter(Boolean).join(' · ');
+  $('modeHint').textContent = n.mode === 'roster' ? `Roster mode: ${store.roster.length} call signs. Type any part of a call sign.` : 'Free entry: 4–8 letters/numbers.';
+  $('callLabel').textContent = n.mode === 'roster' ? 'Call Sign (type to search roster)' : 'Call Sign';
+  $('btnRosterDl').classList.toggle('hidden', n.mode !== 'roster');
+  $('wxRow').classList.toggle('hidden', false);
+  renderNet(); clearInterval(timer); timer = setInterval(tick, 1000); tick(); $('callInput').focus();
+}
+function tick() {
+  const n = cur(); if (!n) return;
+  const s = Math.max(0, Math.floor(((n.end ? new Date(n.end) : new Date()) - new Date(n.start)) / 1000));
+  $('sClock').textContent = s >= 3600 ? `${Math.floor(s/3600)}:${String(Math.floor(s%3600/60)).padStart(2,'0')}h` : `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+}
+function renderNet() {
+  const n = cur(), closed = !!n.end;
+  $('vBadge').textContent = closed ? 'CLOSED' : 'LIVE'; $('vBadge').className = 'badge ' + (closed ? 'closed' : 'live');
+  $('entryCard').classList.toggle('hidden', closed);
+  $('btnClose').classList.toggle('hidden', closed); $('btnReopen').classList.toggle('hidden', !closed);
+  $('sCount').textContent = n.checkins.length;
+  $('sTraffic').textContent = n.checkins.filter(c => c.traffic !== 'None').length;
+  $('emptyLog').classList.toggle('hidden', n.checkins.length > 0);
+  $('logBody').innerHTML = n.checkins.map((c, i) => `<tr>
+    <td>${i+1}</td><td>${fmtTime(c.time)}</td><td class="call">${esc(c.call)}</td><td>${esc(c.name)}</td><td>${esc(c.loc)}</td>
+    <td>${esc(c.kind)}</td><td>${c.traffic !== 'None' ? `<span class="badge ${c.traffic}">${c.traffic}</span>` : ''}</td><td>${esc(c.note)}</td>
+    <td class="noprint">${closed ? '' : `<button class="small" data-del="${c.id}">✕</button>`}</td></tr>`).join('');
+}
+$('logBody').addEventListener('click', e => {
+  const id = e.target.dataset.del; if (!id) return;
+  const n = cur(); n.checkins = n.checkins.filter(c => c.id !== id); save(); renderNet();
+});
+
+/* ---------- Call sign entry & typeahead ---------- */
+let sugg = [], act = -1;
+const ci = $('callInput');
+function hilite(call, q) {
+  const i = call.indexOf(q); if (i < 0 || !q) return esc(call);
+  return esc(call.slice(0, i)) + '<mark>' + esc(q) + '</mark>' + esc(call.slice(i + q.length));
+}
+function search(q) {
+  const taken = new Set(cur().checkins.map(c => c.call));
+  const scored = [];
+  for (const r of store.roster) {
+    let s = r.call.startsWith(q) ? 0 : r.call.endsWith(q) ? 1 : r.call.includes(q) ? 2 : -1; // prefix, suffix, anywhere
+    if (s < 0 && r.name && r.name.toUpperCase().includes(q)) s = 3;
+    if (s >= 0) scored.push({ r, s: s + (taken.has(r.call) ? 10 : 0), taken: taken.has(r.call) });
+  }
+  return scored.sort((a, b) => a.s - b.s || a.r.call.localeCompare(b.r.call)).slice(0, 12);
+}
+function renderSuggest() {
+  const n = cur(); const q = ci.value.trim().toUpperCase();
+  const box = $('suggest');
+  if (n.mode !== 'roster' || !q) { box.classList.add('hidden'); sugg = []; return; }
+  sugg = search(q);
+  const exact = store.roster.some(r => r.call === q);
+  let html = sugg.map((m, i) => `<div class="sg ${i === act ? 'act' : ''}" data-i="${i}"><b>${hilite(m.r.call, q)}</b><span class="muted">${esc(m.r.name)} ${esc(m.r.loc)} ${m.taken ? '· already checked in' : ''}</span></div>`).join('');
+  if (CALL_RE.test(q) && !exact) html += `<div class="sg add ${act === sugg.length ? 'act' : ''}" data-add="1"><b>${esc(q)}</b><span>＋ Add new call sign to roster &amp; check in</span></div>`;
+  if (!html) html = `<div class="sg"><span class="muted">No match. Keep typing (4–8 characters) to add a new call sign.</span></div>`;
+  box.innerHTML = html; box.classList.remove('hidden');
+}
+ci.addEventListener('input', () => { ci.value = ci.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); act = -1; $('callErr').textContent = ''; renderSuggest(); });
+ci.addEventListener('keydown', e => {
+  const total = sugg.length + ($('suggest').querySelector('.add') ? 1 : 0);
+  if (e.key === 'ArrowDown' && total) { e.preventDefault(); act = (act + 1) % total; renderSuggest(); }
+  else if (e.key === 'ArrowUp' && total) { e.preventDefault(); act = (act - 1 + total) % total; renderSuggest(); }
+  else if (e.key === 'Escape') { $('suggest').classList.add('hidden'); }
+  else if (e.key === 'Enter') { e.preventDefault(); submitEntry(); }
+});
+$('suggest').addEventListener('mousedown', e => {
+  e.preventDefault();
+  const el = e.target.closest('.sg'); if (!el) return;
+  if (el.dataset.add) { act = sugg.length; submitEntry(); } else { pick(sugg[+el.dataset.i].r); }
+});
+function pick(r) { ci.value = r.call; $('fName').value = r.name || ''; $('fLoc').value = r.loc || ''; $('suggest').classList.add('hidden'); act = -1; $('fName').focus(); }
+
+function submitEntry() {
+  const n = cur(); if (!n || n.end) return;
+  let call = ci.value.trim().toUpperCase();
+  if (n.mode === 'roster' && act >= 0 && act < sugg.length) { const r = sugg[act].r; call = r.call; $('fName').value ||= r.name || ''; $('fLoc').value ||= r.loc || ''; }
+  else if (n.mode === 'roster' && !store.roster.some(r => r.call === call) && sugg.length === 1 && !CALL_RE.test(call)) { /* fall through to validation */ }
+  if (!CALL_RE.test(call)) { $('callErr').textContent = 'Call sign must be 4–8 letters and numbers.'; return; }
+  if (n.checkins.some(c => c.call === call) && !confirm(`${call} is already checked in. Log again?`)) return;
+  // add new call to roster in roster mode
+  if (n.mode === 'roster' && !store.roster.some(r => r.call === call)) store.roster.push({ call, name: $('fName').value.trim(), loc: $('fLoc').value.trim() });
+  n.checkins.push({ id: uid(), time: new Date().toISOString(), call, name: $('fName').value.trim(), loc: $('fLoc').value.trim(),
+    kind: $('fKind').value, traffic: $('fTraffic').value, note: $('fNote').value.trim() });
+  save(); renderNet();
+  ['callInput','fName','fLoc','fNote'].forEach(id => $(id).value = ''); $('fKind').selectedIndex = 0; $('fTraffic').selectedIndex = 0;
+  $('suggest').classList.add('hidden'); act = -1; $('callErr').textContent = ''; ci.focus();
+}
+$('btnAdd').addEventListener('click', submitEntry);
+['fName','fLoc','fNote'].forEach(id => $(id).addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); submitEntry(); } }));
+
+/* ---------- Close / export ---------- */
+$('btnClose').addEventListener('click', () => { if (confirm('Close this NET?')) { cur().end = new Date().toISOString(); save(); renderNet(); tick(); } });
+$('btnReopen').addEventListener('click', () => { cur().end = null; save(); renderNet(); });
+function download(name, text, type = 'text/csv') {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+const csv = rows => rows.map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
+$('btnCsv').addEventListener('click', () => {
+  const n = cur();
+  download(`${n.name.replace(/\W+/g, '_')}_${n.start.slice(0, 10)}.csv`, csv([
+    ['Net', n.name], ['Type', n.type], ['Net Control', n.ncs], ['Start', n.start], ['End', n.end || ''], [],
+    ['#', 'Time', 'Call Sign', 'Name', 'Location', 'Type', 'Traffic', 'Notes'],
+    ...n.checkins.map((c, i) => [i + 1, c.time, c.call, c.name, c.loc, c.kind, c.traffic, c.note])]));
+});
+$('btnRosterDl').addEventListener('click', () => download('roster.csv', csv([['callsign','name','location'], ...store.roster.map(r => [r.call, r.name, r.loc])])));
+$('btnPrint').addEventListener('click', () => window.print());
+
+/* ---------- History ---------- */
+$('btnHistory').addEventListener('click', () => {
+  show('histView');
+  $('histList').innerHTML = store.nets.length ? `<table><thead><tr><th>Date</th><th>Net</th><th>Type</th><th>Check-ins</th><th></th></tr></thead><tbody>${store.nets.map(n =>
+    `<tr><td>${new Date(n.start).toLocaleDateString()}</td><td>${esc(n.name)} ${n.end ? '' : '<span class="badge live">LIVE</span>'}</td><td>${esc(n.type)}</td><td>${n.checkins.length}</td>
+     <td><button class="small" data-open="${n.id}">Open</button> <button class="small danger" data-rm="${n.id}">Delete</button></td></tr>`).join('')}</tbody></table>` : '<div class="muted">No nets yet.</div>';
+});
+$('histList').addEventListener('click', e => {
+  const o = e.target.dataset.open, r = e.target.dataset.rm;
+  if (o) { store.currentId = o; save(); openNet(); }
+  if (r && confirm('Delete this net log permanently?')) { store.nets = store.nets.filter(n => n.id !== r); if (store.currentId === r) store.currentId = null; save(); $('btnHistory').click(); }
+});
+
+/* ---------- Boot ---------- */
+cur() ? openNet() : show('setupView');
+})();
+</script>
+</body>
+</html>
