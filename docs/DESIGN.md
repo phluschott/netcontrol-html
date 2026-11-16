@@ -94,6 +94,7 @@ Today there is one local user, created on first run, who owns every group they c
 - Check-in net screen differs from a Skywarn activation screen.
 - Skywarn reports need a "Relayed to NWS?" checkbox (the person beside net control relays; the app does not contact NWS).
 - Station page will show every check-in, note, and storm report for that station.
+- **Check-ins are permanent.** They can never be deleted. A mistake is fixed by a correction that keeps the original visible, so the record stays trustworthy when members can see their own history (see WISHLIST item 2).
 
 ## Screens (Phase 1)
 
