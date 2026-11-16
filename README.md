@@ -2,7 +2,7 @@
 
 A browser app for amateur radio net control operators. It works offline once loaded, stores data in the browser, and is built for one operator today with group roles ready for more users later.
 
-**Status:** Phase 1 is done: stations, groups, memberships, CSV import, station lookup, backup. Nets are next and will be designed together first. See [docs/DESIGN.md](docs/DESIGN.md).
+**Status:** Phase 1 is done: stations, groups, memberships, CSV import, station lookup, backup. Nets are next and will be designed together first. See [docs/DESIGN.md](docs/DESIGN.md). Future ideas are kept in [docs/WISHLIST.md](docs/WISHLIST.md).
 
 ## What it does now
 
