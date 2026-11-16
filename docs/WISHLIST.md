@@ -22,7 +22,7 @@ Members sign in with their own account and see their part of the app. Needs the 
   - *To discuss:* which fields members may change themselves and which stay with group admins (for example roles and spotter ID).
   - *To discuss:* a call sign change keeps the old call as a previous call, as it does today.
 - **My check-ins**: the member sees every check-in, across every group and net, read-only.
-  - **Check-ins cannot be deleted**, by members or anyone else.
+  - **Members can never delete a check-in**, including their own. Group admins can edit or delete check-ins.
 - **Message boards**: one or more boards per group, possibly with forum-style topics and replies.
   - Members post to boards in groups they belong to.
   - **Messages can be deleted**: by their author, and by group admins for moderation.
