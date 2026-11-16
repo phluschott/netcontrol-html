@@ -30,3 +30,12 @@ Members sign in with their own account and see their part of the app. Needs the 
   - **Messages can be deleted**: by their author, and by group admins for moderation.
   - The profile page lists the member's own messages.
   - *To discuss:* who can see a board (members only, or public), notifications by email, and whether net control can pin a board post (for example the week's announcements).
+
+## 3. Optional real-time sync (subscription)
+
+*Later, after the core app is finished.* An optional hosted service (for example on AWS) that people can subscribe to if they want live sharing between devices and net controllers. The app keeps working fully without it.
+
+- Local-first stays the default; sync is an add-on.
+- Data model is already sync-ready: UUIDs, audit fields on every record, soft deletes.
+- The permission rules (Admin, Net Controller, Moderator, Standard User, custom positions) would be enforced on the server too.
+- *To discuss:* pricing, who pays (per person or per group), and end-to-end encryption so the service cannot read the data.
