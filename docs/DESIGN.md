@@ -17,8 +17,8 @@ Status: **Phase 1 (Stations, Groups, Memberships) in progress.** Nets are design
 | Storage | IndexedDB via Dexie | Years of history, indexed queries (call sign prefix/suffix, membership lookups). localStorage is too small and unindexed. |
 | Offline | Service worker (vite-plugin-pwa) | Activations happen when power and internet fail. |
 | Hosting | Static site (GitHub Pages) | Nothing to install or run. Hash-based routes so any path works on static hosting. |
-| Sync (later) | Hosted backend, e.g. Supabase | Only when there are multiple users. IDs are UUIDs and records carry audit fields so local data can sync without rewriting. |
-| Backup | Full JSON export and restore | Local data is only as safe as its last backup. |
+| Sync (not planned now) | Hosted backend, e.g. Supabase | Only if live sharing is ever needed. IDs are UUIDs and records carry audit fields so local data could sync without rewriting. |
+| Backup and sharing | Encrypted backup file (AES-256-GCM, key from a generated 20-character password via PBKDF2-SHA-256, 600,000 iterations) | Local data is only as safe as its last backup. Data is shared between net controllers by sending the file and, separately, its password. No live sharing for now. |
 
 ## Data model
 

@@ -1,5 +1,7 @@
 import { db, getMeta, setMeta, TABLES } from './db';
 import { audit, currentUserId, nowIso } from './services';
+import { decryptJson, encryptJson, generatePassword, isEncryptedEnvelope } from '../lib/crypto';
+
 
 export interface BackupFile {
   app: 'netcontrol';
@@ -66,4 +68,47 @@ function upgradeBackup(f: BackupFile): BackupFile {
       roles: f.tables.roles ?? [],
     },
   };
+}
+
+/* ---------------- encrypted backups ---------------- */
+
+export interface BackupHistoryEntry { id: string; createdAt: string; fileName: string; password: string }
+const HISTORY_KEY = 'backupHistory';
+const HISTORY_MAX = 50;
+
+/** Past encrypted backups made in this browser, newest first, with their passwords. */
+export async function backupHistory(): Promise<BackupHistoryEntry[]> {
+  return (await getMeta<BackupHistoryEntry[]>(HISTORY_KEY)) ?? [];
+}
+
+/** Build an encrypted backup of everything. Returns the file contents and its generated password. */
+export async function createEncryptedBackup(): Promise<{ fileName: string; text: string; password: string; id: string }> {
+  const id = generatePassword().slice(0, 4);
+  const password = generatePassword();
+  const createdAt = nowIso();
+  const fileName = `netcontrol-backup-${createdAt.slice(0, 10)}-${id}.ncbackup`;
+  // Record the entry before exporting so this backup's own history travels inside it.
+  const history = [{ id, createdAt, fileName, password }, ...(await backupHistory())].slice(0, HISTORY_MAX);
+  await setMeta(HISTORY_KEY, history);
+  const plain = await exportAll();
+  const envelope = await encryptJson(plain, password, id, createdAt);
+  return { fileName, text: JSON.stringify(envelope), password, id };
+}
+
+/** What a chosen file is, before restoring it. */
+export function inspectBackupText(text: string): { encrypted: true; id: string; createdAt: string } | { encrypted: false; createdAt: string } {
+  let data: unknown;
+  try { data = JSON.parse(text); } catch { throw new Error('This file is not a Net Control backup.'); }
+  if (isEncryptedEnvelope(data)) return { encrypted: true, id: data.id, createdAt: data.createdAt };
+  return { encrypted: false, createdAt: validateBackup(data).exportedAt };
+}
+
+/** Restore from file text; encrypted files need their password. */
+export async function restoreFromText(text: string, password?: string) {
+  const data: unknown = JSON.parse(text);
+  if (isEncryptedEnvelope(data)) {
+    if (!password) throw new Error('This backup is encrypted. Enter its password.');
+    return restoreAll(await decryptJson(data, password));
+  }
+  return restoreAll(data);
 }

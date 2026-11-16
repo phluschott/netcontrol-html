@@ -308,3 +308,43 @@ describe('access control', () => {
     v2.close();
   });
 });
+
+/* ---------------- encrypted backups ---------------- */
+import { generatePassword, normalizePassword, encryptJson, decryptJson, WrongPasswordError } from '../lib/crypto';
+import { backupHistory, createEncryptedBackup, inspectBackupText, restoreFromText } from './backup';
+
+describe('encrypted backups', () => {
+  it('generates strong, readable passwords and accepts them however typed', () => {
+    const p = generatePassword();
+    expect(p).toMatch(/^[A-HJKMNP-Z2-9]{4}(-[A-HJKMNP-Z2-9]{4}){4}$/);
+    expect(new Set(Array.from({ length: 50 }, generatePassword)).size).toBe(50);
+    expect(normalizePassword(p.toLowerCase().replace(/-/g, ' '))).toBe(p);
+  });
+  it('round-trips and rejects a wrong password', async () => {
+    const env = await encryptJson({ hello: 'world' }, 'ABCD-EFGH-JKMN-PQRS-TUVW', 'X1', 't');
+    expect(env.data).not.toContain('world');
+    expect(await decryptJson(env, 'abcdefghjkmnpqrstuvw')).toEqual({ hello: 'world' });
+    await expect(decryptJson(env, 'ABCD-EFGH-JKMN-PQRS-TUVX')).rejects.toBeInstanceOf(WrongPasswordError);
+  });
+  it('encrypted backup restores with its password only, and keeps a history', async () => {
+    const g = await createGroup({ name: 'Club' });
+    await addStationToGroup(g.id, { call: 'W9ABC', name: 'Sam' });
+    const b = await createEncryptedBackup();
+    expect(b.text).not.toContain('W9ABC');
+    expect(inspectBackupText(b.text)).toMatchObject({ encrypted: true, id: b.id });
+    expect((await backupHistory())[0].password).toBe(b.password);
+    await db.delete(); await db.open(); await ensureLocalUser();
+    await expect(restoreFromText(b.text)).rejects.toThrow(/encrypted/);
+    await expect(restoreFromText(b.text, generatePassword())).rejects.toBeInstanceOf(WrongPasswordError);
+    expect(await restoreFromText(b.text, b.password)).toEqual({ stations: 1, groups: 1, memberships: 1 });
+    expect((await findStationByCall('W9ABC'))?.station.name).toBe('Sam');
+    expect((await backupHistory())[0].id).toBe(b.id); // the backup carries its own history entry
+  });
+  it('older unencrypted backups still restore', async () => {
+    await createGroup({ name: 'Club' });
+    const plain = JSON.stringify(await exportAll());
+    expect(inspectBackupText(plain).encrypted).toBe(false);
+    await db.delete(); await db.open(); await ensureLocalUser();
+    expect((await restoreFromText(plain)).groups).toBe(1);
+  });
+});

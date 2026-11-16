@@ -12,7 +12,9 @@ Support a repeater **system** made of several linked repeaters (towers), instead
 - *To discuss:* record which repeater a station checked in through. This helps with signal reports and relays, and with knowing which coverage area a Skywarn spotter is in.
 - *To discuss:* during an activation, mark a site as down or unlinked and note when, so net control knows which areas may not hear the net.
 
-## 2. Member logins (standard users)
+## 2. Member logins (standard users): on hold
+
+*On hold (Nov 2026): this is a net control and admin tool, not a social network. Data is shared between net controllers with encrypted backup files instead.*
 
 Members sign in with their own account and see their part of the app. Needs the hosted backend (accounts and sync); the access-control model already has a place for this.
 
