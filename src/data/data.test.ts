@@ -4,7 +4,7 @@ import {
   addMembership, addStationToGroup, can, createGroup, createStation, currentUserId, deleteGroup, deleteStation,
   ensureLocalUser, findStationByCall, removeMembership, assignRoles, createCustomRole, deleteCustomRole, groupPermissions, isAdmin, setUserAdmin, updateGroup, updateMembership, updateStation,
 } from './services';
-import { applyImport, buildImportPlan, choiceKey, loadPlanContext } from './importPlan';
+import { applyImport, buildImportPlan, choiceKey, loadPlanContext, sampleCsvRows } from './importPlan';
 import { exportAll, restoreAll } from './backup';
 import { migrateLegacyIfNeeded } from './migrateLegacy';
 import { baseCall, callError, callMatchRank } from '../lib/callsign';
@@ -147,6 +147,16 @@ describe('csv import', () => {
     // K9EXT is now in both groups, one station record.
     expect(live(await db.memberships.where('stationId').equals(extSt.id).toArray())).toHaveLength(2);
     expect(live(await db.stations.toArray()).map((x) => x.call).sort()).toEqual(['K9EXT', 'K9REN', 'W9MEM', 'W9NEW']);
+  });
+  it('sample CSV maps every column and its example rows are never imported', async () => {
+    const g = await createGroup({ name: 'Skywarn' });
+    const rows = sampleCsvRows();
+    const filled = [...rows, ['W9REAL', 'Real', 'Person', '', 'Hardin', 'Calhoun', 'IL', '', 'S-7', 'Spotter', '']];
+    const plan = buildImportPlan(toCsv(filled), await loadPlanContext(g.id));
+    expect(plan.columns).toHaveLength(rows[0].length);
+    expect(plan.rows.map((r) => [r.call, r.status])).toEqual([['N0CALL', 'invalid'], ['N1CALL', 'invalid'], ['W9REAL', 'new']]);
+    expect(plan.rows[0].error).toMatch(/Example row/);
+    expect(plan.rows[2].roles).toEqual(['spotter']);
   });
   it('accepts a headerless list of calls', async () => {
     const g = await createGroup({ name: 'Club' });

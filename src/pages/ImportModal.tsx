@@ -68,7 +68,7 @@ export default function ImportModal({ group, onClose }: { group: Group; onClose:
           </div>
           <div className="hint">
             Recognized columns (any order, header names are flexible): {Object.values(IMPORT_FIELD_LABEL).join(', ')}.
-            Without a header row, columns are read as call sign, name, city.
+            Without a header row, columns are read as call sign, name, city. Use <b>Sample CSV</b> on the group page for a ready-to-fill file.
           </div>
         </div>
       </Modal>

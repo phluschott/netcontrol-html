@@ -58,6 +58,18 @@ export function parseRoles(text: string): MemberRole[] {
   return [...out];
 }
 
+/** Marker in the Notes column of the sample file's example rows; rows carrying it are never imported. */
+export const SAMPLE_ROW_MARKER = 'EXAMPLE ROW - delete before importing';
+
+/** A ready-to-fill CSV with every recognized column and two example rows. */
+export function sampleCsvRows(): string[][] {
+  return [
+    ['Call Sign', 'First Name', 'Last Name', 'On-Air Name', 'City', 'County', 'State', 'Grid', 'Spotter ID', 'Roles', 'Notes'],
+    ['N0CALL', 'Robert', 'Sample', 'Bob', 'Springfield', 'Calhoun', 'IL', 'EN59', 'S-101', 'Spotter', SAMPLE_ROW_MARKER],
+    ['N1CALL', 'Jane', 'Example', '', 'Hardin', 'Calhoun', 'IL', '', '', 'Spotter; Net Control', SAMPLE_ROW_MARKER],
+  ];
+}
+
 export type RowStatus = 'new' | 'add' | 'member' | 'invalid' | 'duplicate';
 export const ROW_STATUS_LABEL: Record<RowStatus, string> = {
   new: 'New station',
@@ -143,6 +155,7 @@ export function buildImportPlan(text: string, ctx: PlanContext): ImportPlan {
       line: firstLine + i, rawCall, call, status: 'new', incoming,
       spotterId: get('spotterId'), roles: parseRoles(get('roles')), fills: [], conflicts: [],
     };
+    if (get('notes').toUpperCase().includes(SAMPLE_ROW_MARKER.toUpperCase())) { row.status = 'invalid'; row.error = 'Example row from the sample file'; counts.invalid++; return row; }
     const err = callError(call);
     if (err) { row.status = 'invalid'; row.error = rawCall ? `"${rawCall}": ${err}` : 'No call sign'; counts.invalid++; return row; }
     if (seen.has(call)) { row.status = 'duplicate'; row.error = `${call} appears earlier in the file`; counts.duplicate++; return row; }

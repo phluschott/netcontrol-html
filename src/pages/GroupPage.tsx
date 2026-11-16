@@ -11,6 +11,7 @@ import { Highlight, Modal, fmtDate, useAction } from '../ui/common';
 import { baseCall, callError, cleanCallInput } from '../lib/callsign';
 import { downloadText, toCsv } from '../lib/csv';
 import ImportModal from './ImportModal';
+import { sampleCsvRows } from '../data/importPlan';
 import AccessPanel from './AccessPanel';
 
 type RoleFilter = 'all' | MemberRole | 'inactive';
@@ -81,6 +82,7 @@ export default function GroupPage() {
           <div className="panel-header">
             <span className="panel-title">Members<span className="panel-count">{activeCount}</span></span>
             <div className="row">
+              {canManage && <button className="small" title="Download a CSV with every column the importer reads, to fill in" onClick={() => downloadText(`${group.name.replace(/\W+/g, '_')}_import_sample.csv`, toCsv(sampleCsvRows()))}>Sample CSV</button>}
               <button className="small" onClick={exportCsv} disabled={!members.length}>Export CSV</button>
               {canManage && <button className="small" onClick={() => setImporting(true)}>Import CSV</button>}
               {canManage && <button className="small primary" onClick={() => setAdding(true)}>+ Add Member</button>}
