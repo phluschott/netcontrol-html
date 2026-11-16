@@ -67,6 +67,7 @@
 <header>
   <h1>📻 Net Controller <small>LOCAL · NO ACCOUNT NEEDED</small></h1>
   <div class="row noprint">
+    <button id="btnRoster">Roster</button>
     <button id="btnHistory">Past Nets</button>
     <button id="btnNew">New Net</button>
   </div>
@@ -96,13 +97,11 @@
     <h3>Check-in Mode</h3>
     <div class="modes">
       <label class="mode sel" id="modeFree"><b><input type="radio" name="mode" value="free" checked />Free Entry</b><span class="muted">Type any call sign (4–8 letters &amp; numbers) as stations check in.</span></label>
-      <label class="mode" id="modeRoster"><b><input type="radio" name="mode" value="roster" />Roster Lookup</b><span class="muted">Upload a list of call signs. Matches narrow as you type, with an option to add a new call sign not on the list.</span></label>
+      <label class="mode" id="modeRoster"><b><input type="radio" name="mode" value="roster" />Roster Lookup</b><span class="muted">Add your group manually or upload a list. Matches narrow as you type, with an option to add a new call sign not on the list.</span></label>
     </div>
-    <div id="rosterBox" class="hidden" style="margin-top:16px">
-      <label>Roster file (.csv or .txt — one call sign per line, or <code>callsign,name,location</code>)</label>
-      <input type="file" id="rosterFile" accept=".csv,.txt,.tsv,text/plain,text/csv" />
-      <div class="muted" id="rosterInfo" style="margin-top:6px"></div>
-      <details><summary>Or paste a list</summary><textarea id="rosterPaste" rows="4" placeholder="K9TWX,Kevin,Chicago&#10;W9ABC,Sam,Peoria"></textarea><button type="button" id="rosterLoad" class="small" style="margin-top:8px">Load pasted list</button></details>
+    <div id="rosterBox" class="hidden row" style="margin-top:16px">
+      <span class="muted" id="rosterSummary"></span>
+      <button type="button" id="goRoster" class="small">Manage Roster</button>
     </div>
 
     <div class="row" style="justify-content:flex-end;margin-top:28px;border-top:1px solid var(--line);padding-top:20px">
@@ -162,6 +161,31 @@
   </div>
 </section>
 
+<!-- ============ ROSTER VIEW ============ -->
+<section id="rosterView" class="hidden">
+  <h2>Group Roster</h2>
+  <div class="card">
+    <form id="rosterForm" autocomplete="off">
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));align-items:end">
+        <div><label>Call Sign <span class="req">*</span></label><input id="rCall" required maxlength="8" placeholder="e.g., W9ABC" style="text-transform:uppercase" /></div>
+        <div><label>Name</label><input id="rName" placeholder="e.g., Sam" /></div>
+        <div><label>Location / County</label><input id="rLoc" placeholder="e.g., Peoria" /></div>
+        <div><button class="primary" type="submit" style="width:100%">Add Member</button></div>
+      </div>
+      <div class="err" id="rErr"></div>
+    </form>
+    <details style="margin:0 0 16px"><summary>Import from file or pasted list (merges into roster)</summary>
+      <div style="margin-top:10px"><label>.csv or .txt — one call sign per line, or <code>callsign,name,location</code></label>
+      <input type="file" id="rosterFile" accept=".csv,.txt,.tsv,text/plain,text/csv" />
+      <textarea id="rosterPaste" rows="4" placeholder="K9TWX,Kevin,Chicago&#10;W9ABC,Sam,Peoria" style="margin-top:8px"></textarea>
+      <button type="button" id="rosterLoad" class="small" style="margin-top:8px">Import pasted list</button></div>
+    </details>
+    <div class="muted" id="rosterInfo" style="margin-bottom:8px"></div>
+    <div class="tablewrap"><table><thead><tr><th>Call Sign</th><th>Name</th><th>Location</th><th></th></tr></thead><tbody id="rosterBody"></tbody></table></div>
+    <div class="row" style="margin-top:16px"><button id="rDownload" class="small">Download CSV</button><button id="rClear" class="small danger">Clear All</button><span style="flex:1"></span><button id="rDone" class="primary">Done</button></div>
+  </div>
+</section>
+
 <!-- ============ HISTORY VIEW ============ -->
 <section id="histView" class="hidden">
   <h2>Past Nets</h2>
@@ -184,7 +208,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 const fmtTime = iso => new Date(iso).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
 const cur = () => store.nets.find(n => n.id === store.currentId);
 
-function show(view) { ['setupView','netView','histView'].forEach(v => $(v).classList.toggle('hidden', v !== view)); }
+function show(view) { ['setupView','netView','histView','rosterView'].forEach(v => $(v).classList.toggle('hidden', v !== view)); }
 
 /* ---------- Setup ---------- */
 document.querySelectorAll('input[name=mode]').forEach(r => r.addEventListener('change', () => {
@@ -203,20 +227,49 @@ function parseRoster(text) {
   });
   return [...out.values()];
 }
-function setRoster(list) {
-  store.roster = list; save();
-  $('rosterInfo').textContent = list.length ? `${list.length} call signs loaded.` : 'No valid call signs found.';
+let rosterReturn = 'setupView';
+function renderRoster() {
+  const r = store.roster.slice().sort((a, b) => a.call.localeCompare(b.call));
+  $('rosterInfo').textContent = `${r.length} member${r.length === 1 ? '' : 's'} in roster.`;
+  $('rosterSummary').textContent = `${r.length} call sign${r.length === 1 ? '' : 's'} in roster.`;
+  $('rosterBody').innerHTML = r.map(m => `<tr><td class="call">${esc(m.call)}</td><td>${esc(m.name)}</td><td>${esc(m.loc)}</td><td><button class="small" data-rm="${m.call}">✕</button></td></tr>`).join('');
 }
-$('rosterFile').addEventListener('change', async e => { const f = e.target.files[0]; if (f) setRoster(parseRoster(await f.text())); });
-$('rosterLoad').addEventListener('click', () => setRoster(parseRoster($('rosterPaste').value)));
-if (store.roster.length) $('rosterInfo').textContent = `${store.roster.length} call signs already loaded from last time (upload to replace).`;
+function addMembers(list) {
+  let added = 0;
+  for (const m of list) {
+    const ex = store.roster.find(r => r.call === m.call);
+    if (ex) { ex.name ||= m.name; ex.loc ||= m.loc; } else { store.roster.push(m); added++; }
+  }
+  save(); renderRoster(); return added;
+}
+const setRoster = list => { const n = addMembers(list); $('rosterInfo').textContent = `Imported ${list.length} call signs (${n} new). ${store.roster.length} total.`; };
+$('rosterFile').addEventListener('change', async e => { const f = e.target.files[0]; if (f) setRoster(parseRoster(await f.text())); e.target.value = ''; });
+$('rosterLoad').addEventListener('click', () => { setRoster(parseRoster($('rosterPaste').value)); $('rosterPaste').value = ''; });
+$('rosterForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const call = $('rCall').value.trim().toUpperCase();
+  if (!CALL_RE.test(call)) { $('rErr').textContent = 'Call sign must be 4–8 letters and numbers.'; return; }
+  if (store.roster.some(r => r.call === call)) { $('rErr').textContent = `${call} is already in the roster.`; return; }
+  $('rErr').textContent = '';
+  addMembers([{ call, name: $('rName').value.trim(), loc: $('rLoc').value.trim() }]);
+  $('rosterForm').reset(); $('rCall').focus();
+});
+$('rCall').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); $('rErr').textContent = ''; });
+$('rosterBody').addEventListener('click', e => { const c = e.target.dataset.rm; if (c) { store.roster = store.roster.filter(r => r.call !== c); save(); renderRoster(); } });
+$('rClear').addEventListener('click', () => { if (confirm('Remove everyone from the roster?')) { store.roster = []; save(); renderRoster(); } });
+$('rDownload').addEventListener('click', () => download('roster.csv', csv([['callsign','name','location'], ...store.roster.map(r => [r.call, r.name, r.loc])])));
+function openRoster(back) { rosterReturn = back; renderRoster(); show('rosterView'); }
+$('btnRoster').addEventListener('click', () => openRoster(cur() ? 'netView' : 'setupView'));
+$('goRoster').addEventListener('click', () => openRoster('setupView'));
+$('rDone').addEventListener('click', () => { if (rosterReturn === 'netView') openNet(); else show('setupView'); renderRoster(); });
+renderRoster();
 
 $('setupForm').addEventListener('submit', e => {
   e.preventDefault();
   const ncs = $('ncs').value.trim().toUpperCase();
   if (!CALL_RE.test(ncs)) { alert('Net control call sign must be 4–8 letters/numbers.'); return; }
   const mode = document.querySelector('input[name=mode]:checked').value;
-  if (mode === 'roster' && !store.roster.length) { alert('Load a roster first, or choose Free Entry.'); return; }
+  if (mode === 'roster' && !store.roster.length) { alert('Add people to the roster first (Manage Roster), or choose Free Entry.'); return; }
   const net = { id: uid(), name: $('netName').value.trim(), desc: $('netDesc').value.trim(), type: $('netType').value, ncs, mode,
     repeater: { name: $('repName').value, freq: $('repFreq').value, off: $('repOff').value, tone: $('repTone').value },
     start: new Date().toISOString(), end: null, checkins: [] };
@@ -336,7 +389,7 @@ $('btnCsv').addEventListener('click', () => {
     ['#', 'Time', 'Call Sign', 'Name', 'Location', 'Type', 'Traffic', 'Notes'],
     ...n.checkins.map((c, i) => [i + 1, c.time, c.call, c.name, c.loc, c.kind, c.traffic, c.note])]));
 });
-$('btnRosterDl').addEventListener('click', () => download('roster.csv', csv([['callsign','name','location'], ...store.roster.map(r => [r.call, r.name, r.loc])])));
+$('btnRosterDl').addEventListener('click', () => $('rDownload').click());
 $('btnPrint').addEventListener('click', () => window.print());
 
 /* ---------- History ---------- */
