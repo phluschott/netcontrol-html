@@ -14,7 +14,7 @@
   body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.4 Inter, system-ui, sans-serif; }
   header { background: #181818; border-bottom: 1px solid var(--line); padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; position: sticky; top: 0; z-index: 20; }
   header h1 { margin: 0; font-size: 19px; cursor: pointer; }
-  main { max-width: 1440px; margin: 0 auto; padding: 20px 16px 60px; }
+  main { max-width: 1480px; margin: 0 auto; padding: 18px 16px 60px; }
   .narrow { max-width: 1000px; margin: 0 auto; }
   h2 { margin: 0; font-size: 24px; }
   h3 { margin: 28px 0 14px; font-size: 16px; display: flex; align-items: center; gap: 12px; }
@@ -28,6 +28,7 @@
   input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent-h); }
   input::placeholder, textarea::placeholder { color: #6f6f6f; }
   input[type=checkbox] { width: auto; }
+  input[type=time] { color-scheme: dark; }
   .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); margin-bottom: 14px; }
   .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
   .between { justify-content: space-between; }
@@ -37,17 +38,21 @@
   button.primary { background: var(--accent); } button.primary:hover { background: var(--accent-h); }
   button.danger { background: #7f1d1d; } button.danger:hover { background: #991b1b; }
   button.small { padding: 5px 10px; font-size: 12px; }
-  button.icon { background: transparent; padding: 4px 8px; color: var(--muted); font-size: 14px; }
+  button.icon { background: transparent; padding: 4px 7px; color: var(--muted); font-size: 14px; }
   button.icon:hover { background: #333; color: var(--text); }
   button.icon.on { color: var(--ok); }
   button.live { background: #14532d; color: #bbf7d0; }
+  button.link { background: none; padding: 0; color: #93c5fd; font-weight: 600; font-size: inherit; }
   .hidden { display: none !important; }
   .muted { color: var(--muted); font-size: 13px; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
   .err { color: var(--bad); font-size: 13px; min-height: 18px; margin-top: 4px; }
-  .pill { display: inline-block; padding: 1px 7px; border-radius: 99px; font-size: 11px; font-weight: 700; background: #333; color: #ddd; vertical-align: middle; }
+  .msg { color: var(--ok); }
+  .pill { display: inline-block; padding: 1px 7px; border-radius: 99px; font-size: 11px; font-weight: 700; background: #333; color: #ddd; vertical-align: middle; margin-right: 3px; }
   .pill.live { background: #14532d; color: #86efac; } .pill.closed { background: #3a3a3a; color: #bbb; }
   .pill.Emergency { background: #7f1d1d; color: #fecaca; } .pill.Priority { background: #78350f; color: #fde68a; }
   .pill.Routine { background: #1e3a8a; color: #bfdbfe; } .pill.next { background: var(--accent); color: #fff; }
+  .pill.late { background: #4a3b10; color: #fde68a; } .pill.out { background: #3a3a3a; color: #aaa; } .pill.re { background: #164e63; color: #a5f3fc; }
   table { width: 100%; border-collapse: collapse; }
   th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); font-size: 14px; vertical-align: top; }
   th { color: var(--muted); font-size: 12px; text-transform: uppercase; }
@@ -58,43 +63,56 @@
   .netcard { background: var(--panel); border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 10px; }
   .netcard h2 { font-size: 19px; }
 
-  .sbar { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .sbar { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
   .stats { display: flex; gap: 8px; flex-wrap: wrap; }
-  .stat { background: var(--panel); border-radius: 8px; padding: 6px 12px; text-align: center; min-width: 74px; }
+  .stat { background: var(--panel); border-radius: 8px; padding: 6px 12px; text-align: center; min-width: 70px; }
   .stat b { display: block; font-size: 19px; } .stat span { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
-  .cols { display: grid; gap: 16px; grid-template-columns: 300px minmax(0, 1fr) 380px; align-items: start; }
+  .clock { background: var(--panel); border-radius: 8px; padding: 6px 14px; text-align: right; }
+  .clock b { display: block; font-size: 22px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: 1px; }
+  .clock span { font-size: 12px; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .phases { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; align-items: center; }
+  .phases button { background: var(--panel); color: var(--muted); padding: 6px 12px; font-size: 13px; border: 1px solid var(--line); }
+  .phases button.on { background: var(--accent-soft); color: var(--text); border-color: var(--accent-h); }
+  .phases button.past { color: #cfcfcf; }
+  .cols { display: grid; gap: 16px; grid-template-columns: 290px minmax(0, 1fr) 390px; align-items: start; }
   .col { background: var(--panel); border-radius: 10px; padding: 14px; min-width: 0; }
-  @media (max-width: 1150px) { .cols { grid-template-columns: 280px minmax(0, 1fr); } .cols .side { grid-column: 1 / -1; } }
+  @media (max-width: 1180px) { .cols { grid-template-columns: 270px minmax(0, 1fr); } .cols .side { grid-column: 1 / -1; } }
   @media (max-width: 720px) { .cols { grid-template-columns: 1fr; } }
   #callInput { font-size: 22px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; padding: 12px; }
-  .list { display: flex; flex-direction: column; gap: 2px; max-height: 62vh; overflow-y: auto; margin-top: 8px; }
+  .list { display: flex; flex-direction: column; gap: 2px; max-height: 60vh; overflow-y: auto; margin-top: 8px; }
   .ri { display: flex; gap: 10px; align-items: baseline; padding: 7px 10px; border-radius: 6px; cursor: pointer; }
   .ri:hover, .ri.act { background: var(--accent-soft); }
   .ri b { letter-spacing: 1px; min-width: 76px; }
   .ri .nm { flex: 1; min-width: 0; color: #cfcfcf; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .ri.new b { color: var(--ok); }
+  .ri.new b { color: var(--ok); } .ri.in b { color: #a5f3fc; }
   mark { background: none; color: #60a5fa; }
-  .ci { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto auto auto auto; gap: 8px; align-items: center; padding: 8px; border-radius: 8px; cursor: pointer; border: 1px solid transparent; }
+  .ci { display: grid; grid-template-columns: 22px 62px minmax(0, 1fr) auto auto auto auto; gap: 8px; align-items: center; padding: 8px 6px; border-radius: 8px; cursor: pointer; border: 1px solid transparent; }
   .ci:hover { background: var(--panel2); }
   .ci.sel { background: var(--accent-soft); border-color: var(--accent-h); }
-  .ci.done .who b { color: var(--muted); }
+  .ci.done .who b, .ci.isout .who b { color: var(--muted); }
   .ci .num { color: var(--muted); font-size: 12px; text-align: right; }
-  .ci .who b { font-size: 17px; letter-spacing: 1px; margin-right: 4px; }
+  .ci .time { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 14px; color: #d6d6d6; }
+  .ci .who b { font-size: 17px; letter-spacing: 1px; margin-right: 6px; }
   .ci .who .muted { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .tabs { display: flex; gap: 4px; margin-bottom: 12px; border-bottom: 1px solid var(--line); }
-  .tabs button { background: none; border-radius: 0; padding: 8px 12px; color: var(--muted); border-bottom: 2px solid transparent; }
+  .tabs { display: flex; gap: 2px; margin-bottom: 12px; border-bottom: 1px solid var(--line); }
+  .tabs button { background: none; border-radius: 0; padding: 8px 10px; color: var(--muted); border-bottom: 2px solid transparent; }
   .tabs button.on { color: var(--text); border-bottom-color: var(--accent-h); }
   .station { background: var(--panel2); border-radius: 8px; padding: 12px; margin-bottom: 12px; }
   .station .grid { grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 0 0; }
   .station input, .station select { padding: 7px 9px; font-size: 14px; }
+  .station label { font-size: 11px; color: var(--muted); margin: 0 0 3px; }
   .target { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
   .target b { color: var(--text); }
   .note { border-left: 3px solid var(--line); padding: 6px 10px; margin-top: 10px; }
   .note.tagged { border-left-color: var(--accent-h); }
+  .note.wx { border-left-color: var(--warn); }
+  .note.event { border-left-color: transparent; padding-top: 2px; padding-bottom: 2px; color: var(--muted); font-size: 13px; font-style: italic; }
   .nh { display: flex; gap: 8px; align-items: center; }
   .tag { font-size: 12px; font-weight: 700; letter-spacing: 1px; color: #93c5fd; cursor: pointer; }
   .tag.gen { color: var(--warn); cursor: default; }
   .nt { margin-top: 3px; white-space: pre-wrap; word-wrap: break-word; }
+  .wxline { font-weight: 700; color: #fde68a; }
+  .relay { display: inline-flex; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); margin: 4px 0 0; cursor: pointer; }
   .ann { display: flex; gap: 10px; align-items: flex-start; padding: 8px; border-radius: 6px; cursor: pointer; margin: 0; font-size: 14px; color: var(--text); }
   .ann:hover { background: var(--panel2); }
   .ann input { margin-top: 3px; }
@@ -104,6 +122,8 @@
   .script-h { font-size: 12px; text-transform: uppercase; color: var(--muted); margin: 4px 0 6px; letter-spacing: .05em; }
   .kbd { font-size: 12px; color: var(--muted); margin-top: 6px; }
   kbd { background: #2b2b2b; border-radius: 4px; padding: 0 5px; font: 11px ui-monospace, monospace; }
+  .summary { background: var(--panel); border: 1px solid #3b4a2a; border-radius: 10px; padding: 16px; margin-bottom: 14px; }
+  .summary pre { white-space: pre-wrap; margin: 10px 0 0; font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: #ddd; }
 
   #printView { display: none; }
   @media print {
@@ -132,7 +152,7 @@
   <div id="netCards" class="cards"></div>
   <div id="homeEmpty" class="card hidden">
     <p style="margin-top:0"><b>Set up your net once.</b> Enter the name, schedule, repeater, preamble, standing announcements, and (optionally) your regulars.</p>
-    <p class="muted">After that, each week is: <b>Start Net</b> → read the preamble → roll call → announcements → go around for comments and take notes → <b>End Net</b>. New stations who check in are remembered for next week.</p>
+    <p class="muted">After that, each week is: <b>Start Net</b> → preamble → check-ins → announcements → round of comments → late check-ins → closing. New stations who check in are remembered for next week.</p>
     <button class="primary" data-a="newNet">Create your first net</button>
   </div>
 </section>
@@ -147,6 +167,7 @@
       <div><label>Type of NET</label><select id="eType"><option>Skywarn</option><option>Technical</option><option>Emergency / ARES</option><option>Social / Ragchew</option><option>Training</option><option>Traffic</option><option>Other</option></select></div>
       <div><label>Net Control Call Sign <span class="req">*</span></label><input id="eNcs" maxlength="8" placeholder="e.g., K9TWX" style="text-transform:uppercase" /></div>
       <div><label>Check-in Entry</label><select id="eMode"><option value="roster">Roster lookup (recommended)</option><option value="free">Free entry only</option></select></div>
+      <div><label>Log Times In</label><select id="eTf"><option value="local12">Local, 12-hour (7:42 PM)</option><option value="local24">Local, 24-hour (19:42)</option><option value="utc">UTC / Zulu (0042Z)</option></select></div>
     </div>
 
     <h3>Net Schedule</h3>
@@ -204,14 +225,15 @@
   <div class="sbar">
     <div>
       <h2 id="sName"></h2>
-      <div class="muted"><span id="sBadge" class="pill live">LIVE</span> <span id="sMeta"></span></div>
+      <div class="muted"><span id="sBadge" class="pill live">LIVE</span> <span id="sMeta"></span> · NCS <button class="link" data-a="changeNcs" id="sNcs" title="Hand off net control"></button></div>
     </div>
     <div class="stats">
-      <div class="stat"><b id="stCount">0</b><span>Check-ins</span></div>
-      <div class="stat"><b id="stTraffic">0</b><span>Traffic</span></div>
+      <div class="stat" title="Unique stations checked in (QNI)"><b id="stCount">0</b><span>Check-ins</span></div>
+      <div class="stat" title="Stations with traffic (QTC)"><b id="stTraffic">0</b><span>Traffic</span></div>
       <div class="stat"><b id="stNotes">0</b><span>Notes</span></div>
       <div class="stat"><b id="stClock">0:00</b><span>Elapsed</span></div>
     </div>
+    <div class="clock" title="Current time"><b id="clkMain">--:--</b><span id="clkAlt"></span></div>
     <div class="row">
       <button data-a="exportCsv">Export CSV</button>
       <button data-a="print">Print / PDF</button>
@@ -220,12 +242,15 @@
     </div>
   </div>
 
+  <div class="phases" id="phaseBar"></div>
+  <div class="summary hidden" id="summary"></div>
+
   <div class="cols">
     <div class="col" id="colRoll">
       <h4>Roll Call</h4>
       <input id="callInput" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="8" placeholder="Call sign…" />
       <div class="err" id="callErr"></div>
-      <div class="kbd"><kbd>Enter</kbd> check in · <kbd>↑</kbd><kbd>↓</kbd> pick · <kbd>/</kbd> jump here</div>
+      <div class="kbd"><kbd>Enter</kbd> check in · <kbd>↑</kbd><kbd>↓</kbd> pick · <kbd>/</kbd> jump here · type the end of a call (suffix) to match</div>
       <div id="rollWrap">
         <h4 style="margin-top:14px"><span id="rollTitle">Not yet checked in</span><span id="rollCount"></span></h4>
         <div class="list" id="rollList"></div>
@@ -233,7 +258,7 @@
     </div>
 
     <div class="col">
-      <h4><span>Checked In</span><span style="text-transform:none;letter-spacing:0;font-weight:400">Click a station for details &amp; notes · ✓ = had their turn</span></h4>
+      <h4><span>Checked In</span><span style="text-transform:none;letter-spacing:0;font-weight:400">✓ had turn · ↻ recheck · click a station for details</span></h4>
       <div id="logList"></div>
       <div id="logEmpty" class="muted" style="padding:10px">No check-ins yet. Type a call sign or click a name on the roll call list.</div>
     </div>
@@ -246,7 +271,20 @@
       </div>
       <div id="tabNotes">
         <div id="stationBox"></div>
-        <div class="target" id="noteTarget"></div>
+        <div id="wxForm" class="station hidden">
+          <div class="row between"><b>Storm Report</b><span class="muted" id="wxFor"></span></div>
+          <div class="grid">
+            <div><label>Event</label><select id="wxEvent"><option>Tornado</option><option>Funnel cloud</option><option>Rotating wall cloud</option><option selected>Hail</option><option>Wind gust</option><option>Wind damage</option><option>Flooding</option><option>Heavy rain</option><option>Snow / ice</option><option>Lightning damage</option><option>Other</option></select></div>
+            <div><label>Size / Speed / Amount</label><input id="wxMag" list="wxSizes" placeholder='1.00" quarter, 60 mph' /></div>
+            <div><label>Measured or Estimated</label><select id="wxMeas"><option>Estimated</option><option>Measured</option></select></div>
+            <div><label>Time Observed</label><input id="wxObs" type="time" /></div>
+            <div style="grid-column:1/-1"><label>Location</label><input id="wxLoc" placeholder="e.g., 3 mi NW of Peoria / I-74 &amp; Rt 6" /></div>
+            <div style="grid-column:1/-1"><label>Remarks</label><input id="wxRem" placeholder="Duration, damage, movement…" /></div>
+          </div>
+          <div class="row" style="margin-top:10px"><button class="primary small" data-a="wxSave">Save Report</button><button class="small" data-a="wxCancel">Cancel</button></div>
+          <datalist id="wxSizes"><option value='0.25" pea'><option value='0.50" marble'><option value='0.75" penny'><option value='0.88" nickel'><option value='1.00" quarter'><option value='1.25" half dollar'><option value='1.50" walnut / ping pong'><option value='1.75" golf ball'><option value='2.00" hen egg'><option value='2.50" tennis ball'><option value='2.75" baseball'><option value='4.00" softball'></datalist>
+        </div>
+        <div class="row between" style="margin-bottom:6px"><div class="target" id="noteTarget" style="margin:0"></div><button class="small" id="wxBtn" data-a="wxOpen">+ Storm Report</button></div>
         <textarea id="noteInput" rows="3"></textarea>
         <div class="kbd"><kbd>Enter</kbd> save · <kbd>Shift</kbd>+<kbd>Enter</kbd> new line · start with <kbd>@CALL</kbd> to tag a station · <kbd>Esc</kbd> general note</div>
         <div class="row between" style="margin-top:12px"><span class="muted" id="noteListTitle"></span><button class="small" id="noteFilterBtn" data-a="toggleNoteFilter"></button></div>
@@ -264,7 +302,7 @@
 <!-- ================= HISTORY ================= -->
 <section id="vHistory" class="narrow hidden">
   <div class="row between" style="margin-bottom:16px"><h2 id="hTitle"></h2><div class="row"><button data-a="home">Back</button><button class="primary" id="hStart" data-a="startNet">Start Net</button></div></div>
-  <div class="card tablewrap"><table><thead><tr><th>Date</th><th>Time</th><th>NCS</th><th>Check-ins</th><th>Notes</th><th></th></tr></thead><tbody id="hBody"></tbody></table>
+  <div class="card tablewrap"><table><thead><tr><th>Date</th><th>Time</th><th>NCS</th><th>QNI</th><th>QTC</th><th>Min</th><th></th></tr></thead><tbody id="hBody"></tbody></table>
   <div id="hEmpty" class="muted hidden" style="padding:10px">No sessions yet.</div></div>
 </section>
 </main>
@@ -278,18 +316,39 @@ const $ = id => document.getElementById(id);
 const CALL_RE = /^[A-Z0-9]{4,8}$/;
 const KEY = 'netcontrol.v2';
 const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-const KINDS = ['Regular','Visitor','Short Time','Mobile','Relay','Portable'];
+const KINDS = ['Regular','Visitor','Short Time','Mobile','Relay','Portable','In & Out'];
 const TRAFFIC = ['None','Routine','Priority','Emergency'];
+const PHASES = [['preamble','Preamble'],['checkins','Check-ins'],['ann','Announcements'],['comments','Round of Comments'],['late','Late Check-ins'],['closing','Closing']];
+const phaseIdx = k => PHASES.findIndex(p => p[0] === k);
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const fmtT = iso => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-const fmtD = iso => new Date(iso).toLocaleDateString([], { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+const pad = n => String(n).padStart(2, '0');
 const localTz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return 'America/New_York'; } })();
 const opts = (list, sel) => list.map(v => `<option${v === sel ? ' selected' : ''}>${esc(v)}</option>`).join('');
 
+/* ---------------- Time ---------------- */
+let TF = 'local12';                       // time format for the net being viewed
+const setTF = n => { TF = (n && n.timeFmt) || 'local12'; };
+const zulu = d => pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + 'Z';
+function fmtT(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (TF === 'utc') return zulu(d);
+  if (TF === 'local24') return pad(d.getHours()) + ':' + pad(d.getMinutes());
+  return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+const fmtD = iso => new Date(iso).toLocaleDateString([], { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+const hhmm = iso => { const d = new Date(iso); return TF === 'utc' ? pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) : pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+function withHHMM(iso, v) {
+  const [h, m] = (v || '').split(':').map(Number); if (isNaN(h) || isNaN(m)) return iso;
+  const d = new Date(iso); if (TF === 'utc') d.setUTCHours(h, m, 0, 0); else d.setHours(h, m, 0, 0);
+  return d.toISOString();
+}
+const mins = (a, b) => Math.max(0, Math.round((new Date(b) - new Date(a)) / 60000));
+
 /* ---------------- Data ---------------- */
 function newNet(o = {}) {
-  return { id: uid(), name: '', desc: '', type: 'Skywarn', ncs: '', mode: 'roster',
+  return { id: uid(), name: '', desc: '', type: 'Skywarn', ncs: '', mode: 'roster', timeFmt: 'local12',
     schedule: { freq: 'Weekly', day: 'Tuesday', time: '19:00', tz: localTz },
     repeater: { name: '', freq: '', off: '', tone: '' },
     preamble: '', closing: '', announcements: '', members: [], sessions: [], ...o };
@@ -309,7 +368,7 @@ function migrate() {
   for (const o of (old.nets || []).slice().reverse()) {
     let n = byName.get(o.name);
     if (!n) { n = newNet({ name: o.name || 'Untitled Net', type: o.type || 'Skywarn', ncs: o.ncs || '', desc: o.desc || '', mode: o.mode || 'roster', repeater: { name: '', freq: '', off: '', tone: '', ...(o.repeater || {}) } }); byName.set(o.name, n); st.nets.push(n); }
-    const s = { id: uid(), start: o.start, end: o.end || o.start, ncs: o.ncs, checkins: [], notes: [], announcements: [] };
+    const s = { id: uid(), start: o.start, end: o.end || o.start, ncs: o.ncs, phase: 'closing', checkins: [], notes: [], announcements: [] };
     for (const c of o.checkins || []) {
       s.checkins.push({ id: c.id || uid(), time: c.time, call: c.call, name: c.name || '', loc: c.loc || '', kind: c.kind || 'Regular', traffic: c.traffic || 'None', done: true });
       if (c.note) s.notes.push({ id: uid(), time: c.time, call: c.call, text: c.note });
@@ -348,9 +407,16 @@ function schedText(n) {
   return [day, t && 'at ' + t, sc.tz].filter(Boolean).join(' ');
 }
 const repText = r => [r.name, r.freq && r.freq + ' MHz', r.off, r.tone && 'PL ' + r.tone].filter(Boolean).join(' · ');
+const realNotes = s => s.notes.filter(x => x.kind !== 'event');
+const wxText = x => `${x.event.toUpperCase()}${x.mag ? ' ' + x.mag : ''}${x.meas ? ' (' + x.meas.toLowerCase() + ')' : ''}${x.loc ? ' · ' + x.loc : ''}`;
+function stats(s) {
+  return { qni: new Set(s.checkins.map(c => c.call)).size, qtc: s.checkins.filter(c => c.traffic !== 'None').length,
+    qtr: mins(s.start, s.end || new Date().toISOString()), rechecks: s.checkins.reduce((a, c) => a + (c.rechecks || []).length, 0),
+    late: s.checkins.filter(c => c.late).length, wx: s.notes.filter(x => x.kind === 'wx').length };
+}
 
 /* ---------------- UI state ---------------- */
-const ui = { netId: null, sessId: null, sel: null, tab: 'notes', act: -1, items: [], allNotes: false, draft: null, returnTo: 'home' };
+const ui = { netId: null, sessId: null, sel: null, tab: 'notes', act: -1, items: [], allNotes: false, draft: null, returnTo: 'home', wx: false };
 const VIEWS = ['vHome', 'vEdit', 'vSession', 'vHistory'];
 const onSession = () => !$('vSession').classList.contains('hidden');
 function show(v) { VIEWS.forEach(x => $(x).classList.toggle('hidden', x !== v)); window.scrollTo(0, 0); renderHeader(); }
@@ -396,7 +462,7 @@ function openEdit(n, isNew, returnTo) {
   ui.draft = JSON.parse(JSON.stringify(n)); ui.returnTo = returnTo || 'home';
   const d = ui.draft;
   $('editTitle').textContent = isNew ? 'Create New NET' : 'Edit NET';
-  $('eName').value = d.name; $('eDesc').value = d.desc; $('eType').value = d.type; $('eNcs').value = d.ncs; $('eMode').value = d.mode;
+  $('eName').value = d.name; $('eDesc').value = d.desc; $('eType').value = d.type; $('eNcs').value = d.ncs; $('eMode').value = d.mode; $('eTf').value = d.timeFmt || 'local12';
   $('eFreq').value = d.schedule.freq; $('eDay').innerHTML = opts(DAYS, d.schedule.day); $('eTime').value = d.schedule.time;
   $('eTz').innerHTML = opts(tzList.includes(d.schedule.tz) ? tzList : [d.schedule.tz, ...tzList], d.schedule.tz);
   $('eRName').value = d.repeater.name; $('eRFreq').value = d.repeater.freq; $('eROff').value = d.repeater.off; $('eRTone').value = d.repeater.tone;
@@ -426,49 +492,78 @@ function saveNet() {
   const d = ui.draft, name = $('eName').value.trim(), ncs = $('eNcs').value.trim().toUpperCase();
   if (!name) { $('eErr').textContent = 'NET name is required.'; $('eName').focus(); return; }
   if (!CALL_RE.test(ncs)) { $('eErr').textContent = 'Net control call sign must be 4–8 letters and numbers.'; $('eNcs').focus(); return; }
-  const def = { name, ncs, desc: $('eDesc').value.trim(), type: $('eType').value, mode: $('eMode').value,
+  const def = { name, ncs, desc: $('eDesc').value.trim(), type: $('eType').value, mode: $('eMode').value, timeFmt: $('eTf').value,
     schedule: { freq: $('eFreq').value, day: $('eDay').value, time: $('eTime').value, tz: $('eTz').value },
     repeater: { name: $('eRName').value.trim(), freq: $('eRFreq').value.trim(), off: $('eROff').value.trim(), tone: $('eRTone').value.trim() },
     preamble: $('ePre').value, announcements: $('eAnn').value, closing: $('eClose').value, members: d.members };
   let n = net(d.id);
   if (n) Object.assign(n, def); else { n = newNet({ ...def, id: d.id }); S.nets.push(n); }
   save();
-  if (ui.returnTo === 'session') { show('vSession'); renderSession(); } else goHome();
+  if (ui.returnTo === 'session') { show('vSession'); setTF(n); renderSession(); } else goHome();
 }
 
 /* ---------------- Session ---------------- */
+function logEvent(s, text) { s.notes.push({ id: uid(), time: new Date().toISOString(), call: null, kind: 'event', text }); }
 function startNet(id) {
   const [an] = activePair();
   if (an) { if (an.id === id || confirm(`"${an.name}" is still running. Resume it instead?`)) resume(); return; }
   const n = net(id);
-  const s = { id: uid(), start: new Date().toISOString(), end: null, ncs: n.ncs, checkins: [], notes: [],
+  const s = { id: uid(), start: new Date().toISOString(), end: null, ncs: n.ncs, phase: 'preamble', checkins: [], notes: [],
     announcements: n.announcements.split(/\r?\n/).map(t => t.trim()).filter(Boolean).map(text => ({ id: uid(), text, done: false })) };
+  logEvent(s, `Net opened. NCS ${n.ncs}`);
   n.sessions.unshift(s); S.active = { netId: n.id, sessId: s.id }; save();
   openSession(n.id, s.id, n.preamble ? 'script' : 'notes');
 }
 function resume() { const [n, s] = activePair(); if (n) openSession(n.id, s.id); else goHome(); }
 function openSession(netId, sessId, tab) {
-  ui.netId = netId; ui.sessId = sessId; ui.sel = null; ui.allNotes = false; ui.act = -1; ui.tab = tab || 'notes';
+  ui.netId = netId; ui.sessId = sessId; ui.sel = null; ui.allNotes = false; ui.act = -1; ui.tab = tab || 'notes'; ui.wx = false;
+  setTF(net(netId));
   $('callInput').value = ''; $('callErr').textContent = '';
   show('vSession'); renderSession(); if (!curSess()[1].end) $('callInput').focus();
 }
-function renderSession() { renderTop(); renderRoll(); renderLog(); renderSide(); renderHeader(); }
+function renderSession() { renderTop(); renderPhases(); renderSummary(); renderRoll(); renderLog(); renderSide(); renderHeader(); }
 function renderTop() {
   const [n, s] = curSess(); const closed = !!s.end;
   $('sName').textContent = n.name;
   $('sBadge').textContent = closed ? 'CLOSED' : 'LIVE'; $('sBadge').className = 'pill ' + (closed ? 'closed' : 'live');
-  $('sMeta').textContent = [fmtD(s.start), fmtT(s.start) + (closed ? '–' + fmtT(s.end) : ''), 'NCS ' + s.ncs, repText(n.repeater)].filter(Boolean).join(' · ');
-  $('stCount').textContent = s.checkins.length;
-  $('stTraffic').textContent = s.checkins.filter(c => c.traffic !== 'None').length;
-  $('stNotes').textContent = s.notes.length;
+  $('sMeta').textContent = [fmtD(s.start), 'opened ' + fmtT(s.start) + (closed ? ', closed ' + fmtT(s.end) : ''), repText(n.repeater)].filter(Boolean).join(' · ');
+  $('sNcs').textContent = s.ncs;
+  const st = stats(s);
+  $('stCount').textContent = st.qni; $('stTraffic').textContent = st.qtc; $('stNotes').textContent = realNotes(s).length;
   $('btnEnd').classList.toggle('hidden', closed); $('btnReopen').classList.toggle('hidden', !closed);
   $('callInput').disabled = closed; $('callInput').placeholder = closed ? 'Net is closed' : 'Call sign…';
   tick();
 }
+function renderPhases() {
+  const [, s] = curSess(); const cur = phaseIdx(s.phase || 'preamble');
+  $('phaseBar').classList.toggle('hidden', !!s.end);
+  $('phaseBar').innerHTML = '<span class="muted" style="margin-right:4px">Net flow:</span>' + PHASES.map(([k, label], i) =>
+    `<button data-a="phase" data-v="${k}" class="${i === cur ? 'on' : i < cur ? 'past' : ''}">${i + 1}. ${label}</button>`).join('');
+}
+function summaryText(n, s) {
+  const st = stats(s), d = new Date(s.start), e = s.end ? new Date(s.end) : null;
+  const ncsList = [...new Set([s.ncs, ...s.notes.filter(x => x.kind === 'event' && /^Net control handed/.test(x.text)).map(x => x.text.match(/from (\w+)/)?.[1]).filter(Boolean)])];
+  return [
+    `${n.name}: ${fmtD(s.start)}`,
+    `Open ${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} local (${zulu(d)})` + (e ? ` · Close ${e.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} local (${zulu(e)})` : ''),
+    `NCS: ${ncsList.join(', ')}${repText(n.repeater) ? ' · ' + repText(n.repeater) : ''}`,
+    `QNI ${st.qni} · QTC ${st.qtc} · QTR ${st.qtr} min${st.late ? ` · ${st.late} late` : ''}${st.rechecks ? ` · ${st.rechecks} rechecks` : ''}${st.wx ? ` · ${st.wx} storm reports` : ''}`,
+    `Check-ins: ${s.checkins.map(c => c.call + (c.late ? ' (late)' : '')).join(', ') || 'none'}`
+  ].join('\n');
+}
+function renderSummary() {
+  const [n, s] = curSess();
+  $('summary').classList.toggle('hidden', !s.end);
+  if (!s.end) return;
+  $('summary').innerHTML = `<div class="row between"><b>Net Summary</b><button class="small" data-a="copySummary">Copy Summary</button></div><pre id="summaryText">${esc(summaryText(n, s))}</pre>`;
+}
 function tick() {
+  const now = new Date();
+  if (TF === 'utc') { $('clkMain').textContent = pad(now.getUTCHours()) + ':' + pad(now.getUTCMinutes()) + ':' + pad(now.getUTCSeconds()) + 'Z'; $('clkAlt').textContent = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + ' local'; }
+  else { $('clkMain').textContent = TF === 'local24' ? pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds()) : now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' }); $('clkAlt').textContent = zulu(now) + ' UTC'; }
   const [, s] = curSess(); if (!s) return;
-  const sec = Math.max(0, Math.floor(((s.end ? new Date(s.end) : new Date()) - new Date(s.start)) / 1000));
-  const mm = String(Math.floor(sec % 3600 / 60)), ss = String(sec % 60).padStart(2, '0');
+  const sec = Math.max(0, Math.floor(((s.end ? new Date(s.end) : now) - new Date(s.start)) / 1000));
+  const mm = String(Math.floor(sec % 3600 / 60)), ss = pad(sec % 60);
   $('stClock').textContent = sec >= 3600 ? `${Math.floor(sec / 3600)}:${mm.padStart(2, '0')}:${ss}` : `${mm}:${ss}`;
 }
 setInterval(() => { if (onSession()) tick(); }, 1000);
@@ -479,17 +574,16 @@ function hilite(text, q) {
 }
 function buildItems(n, s, q) {
   const inSet = new Set(s.checkins.map(c => c.call)), { m: att } = attendance(n);
-  const ms = [];
+  const ms = [], ins = [];
   for (const mem of n.members) {
-    if (inSet.has(mem.call)) continue;
     let r = 0;
     if (q) { r = mem.call.startsWith(q) ? 0 : mem.call.endsWith(q) ? 1 : mem.call.includes(q) ? 2 : (mem.name && mem.name.toUpperCase().includes(q)) ? 3 : -1; if (r < 0) continue; }
+    if (inSet.has(mem.call)) { if (q) ins.push({ t: 'in', call: mem.call, mem, r }); continue; }
     ms.push({ t: 'm', call: mem.call, mem, r, a: att.get(mem.call) || 0 });
   }
   ms.sort((x, y) => x.r - y.r || y.a - x.a || x.call.localeCompare(y.call));
-  const items = [];
-  if (q && inSet.has(q)) items.push({ t: 'in', call: q });
-  items.push(...ms);
+  ins.sort((x, y) => x.r - y.r);
+  const items = [...ms, ...ins];
   if (q && CALL_RE.test(q) && !inSet.has(q) && !n.members.some(x => x.call === q)) items.push({ t: 'new', call: q });
   return items;
 }
@@ -505,8 +599,8 @@ function renderRoll() {
   $('rollTitle').textContent = q ? 'Matches' : 'Not yet checked in';
   $('rollCount').textContent = q ? '' : n.members.filter(x => !inSet.has(x.call)).length;
   $('rollList').innerHTML = ui.items.map((it, i) => {
-    const cls = 'ri' + (i === ui.act ? ' act' : '') + (it.t === 'new' ? ' new' : '');
-    if (it.t === 'in') return `<div class="${cls}" data-a="pick" data-call="${esc(it.call)}"><b>${esc(it.call)}</b><span class="nm">already checked in. Select</span></div>`;
+    const cls = 'ri' + (i === ui.act ? ' act' : '') + (it.t === 'new' ? ' new' : '') + (it.t === 'in' ? ' in' : '');
+    if (it.t === 'in') return `<div class="${cls}" data-a="recheck" data-call="${esc(it.call)}"><b>${hilite(it.call, q)}</b><span class="nm">already in. Log a recheck ↻</span></div>`;
     if (it.t === 'new') return `<div class="${cls}" data-a="rollIn" data-call="${esc(it.call)}"><b>＋ ${esc(it.call)}</b><span class="nm">New station: check in &amp; add to roster</span></div>`;
     return `<div class="${cls}" data-a="rollIn" data-call="${esc(it.call)}"><b>${hilite(it.call, q)}</b><span class="nm">${esc([it.mem.name, it.mem.loc].filter(Boolean).join(' · '))}</span>${total ? `<span class="muted" title="Nets attended">${it.a}/${total}</span>` : ''}</div>`;
   }).join('') || `<div class="muted" style="padding:8px">${q ? 'No match. Type the full call sign (4–8 characters) to add a new station.' : n.members.length ? 'Everyone on the roster has checked in.' : 'No members yet. Type call signs as stations check in; they will be remembered for next week.'}</div>`;
@@ -514,53 +608,68 @@ function renderRoll() {
 }
 function renderLog() {
   const [, s] = curSess();
-  const notesBy = new Map(); s.notes.forEach(x => x.call && notesBy.set(x.call, (notesBy.get(x.call) || 0) + 1));
-  const next = s.end ? null : s.checkins.find(c => !c.done);
+  const notesBy = new Map(); realNotes(s).forEach(x => x.call && notesBy.set(x.call, (notesBy.get(x.call) || 0) + 1));
+  const next = s.end ? null : s.checkins.find(c => !c.done && !c.out);
   $('logEmpty').classList.toggle('hidden', s.checkins.length > 0);
   $('logList').innerHTML = s.checkins.map((c, i) => {
-    const nc = notesBy.get(c.call) || 0;
-    return `<div class="ci${ui.sel === c.call ? ' sel' : ''}${c.done ? ' done' : ''}" data-a="select" data-call="${esc(c.call)}">
+    const nc = notesBy.get(c.call) || 0, rc = (c.rechecks || []).length;
+    return `<div class="ci${ui.sel === c.call ? ' sel' : ''}${c.done ? ' done' : ''}${c.out ? ' isout' : ''}" data-a="select" data-call="${esc(c.call)}">
       <span class="num">${i + 1}</span>
-      <div class="who"><b>${esc(c.call)}</b>${next === c ? '<span class="pill next">NEXT</span> ' : ''}${c.kind !== 'Regular' ? `<span class="pill">${esc(c.kind)}</span> ` : ''}${c.traffic !== 'None' ? `<span class="pill ${c.traffic}">${c.traffic} traffic</span>` : ''}
+      <span class="time" title="Checked in">${fmtT(c.time)}</span>
+      <div class="who"><b>${esc(c.call)}</b>${next === c ? '<span class="pill next">NEXT</span>' : ''}${c.late ? '<span class="pill late">LATE</span>' : ''}${rc ? `<span class="pill re" title="Rechecks at ${(c.rechecks || []).map(fmtT).join(', ')}">↻ ${fmtT(c.rechecks[rc - 1])}${rc > 1 ? ' ×' + rc : ''}</span>` : ''}${c.out ? `<span class="pill out">OUT ${fmtT(c.out)}</span>` : ''}${c.kind !== 'Regular' ? `<span class="pill">${esc(c.kind)}</span>` : ''}${c.traffic !== 'None' ? `<span class="pill ${c.traffic}">${c.traffic} traffic</span>` : ''}
         <div class="muted">${esc([c.name, c.loc].filter(Boolean).join(' · ')) || '&nbsp;'}</div></div>
       <span class="muted" title="Notes">${nc ? '📝 ' + nc : ''}</span>
-      <span class="muted">${fmtT(c.time)}</span>
-      <button class="icon${c.done ? ' on' : ''}" data-a="done" data-call="${esc(c.call)}" title="Mark turn done">✓</button>
+      <button class="icon${c.done ? ' on' : ''}" data-a="done" data-call="${esc(c.call)}" title="Had their turn">✓</button>
+      <button class="icon" data-a="recheck" data-call="${esc(c.call)}" title="Recheck: station is back with more">↻</button>
       <button class="icon" data-a="delCi" data-call="${esc(c.call)}" title="Remove check-in">✕</button>
     </div>`;
   }).join('');
   const sel = $('logList').querySelector('.sel'); if (sel) sel.scrollIntoView({ block: 'nearest' });
 }
 const TABS = { notes: 'Notes', ann: 'Ann', script: 'Script' };
+function noteHtml(x) {
+  if (x.kind === 'event') return `<div class="note event">${fmtT(x.time)} · ${esc(x.text)}</div>`;
+  const head = `<div class="nh">${x.call ? `<span class="tag" data-a="pick" data-call="${esc(x.call)}">${esc(x.call)}</span>` : '<span class="tag gen">GENERAL</span>'}
+      <span class="muted">${fmtT(x.time)}</span><span class="spacer"></span><button class="icon" data-a="delNote" data-id="${x.id}" title="Delete">✕</button></div>`;
+  if (x.kind === 'wx') return `<div class="note wx">${head}
+      <div class="wxline">⛈ ${esc(wxText(x))}</div>
+      <div class="muted">Observed ${x.obs ? fmtT(x.obs) : '–'} · reported ${fmtT(x.time)}${x.text ? ' · ' + esc(x.text) : ''}</div>
+      <label class="relay"><input type="checkbox" data-a="relay" data-id="${x.id}"${x.relayed ? ' checked' : ''} /> ${x.relayed ? 'Relayed to NWS ' + fmtT(x.relayed) : 'Relayed to NWS'}</label></div>`;
+  return `<div class="note${x.call ? ' tagged' : ''}">${head}<div class="nt">${esc(x.text)}</div></div>`;
+}
 function renderSide() {
   const [n, s] = curSess();
   Object.entries(TABS).forEach(([t, k]) => { $('tab' + k).classList.toggle('hidden', ui.tab !== t); $('tabBtn' + k).classList.toggle('on', ui.tab === t); });
-  const doneA = s.announcements.filter(a => a.done).length;
+  const doneA = s.announcements.filter(a => a.done).length, rn = realNotes(s).length;
   $('tabBtnAnn').textContent = `Announcements${s.announcements.length ? ` ${doneA}/${s.announcements.length}` : ''}`;
-  $('tabBtnNotes').textContent = `Notes${s.notes.length ? ' ' + s.notes.length : ''}`;
+  $('tabBtnNotes').textContent = `Notes${rn ? ' ' + rn : ''}`;
 
   const c = ui.sel && s.checkins.find(x => x.call === ui.sel);
   if (!c) ui.sel = null;
   $('stationBox').innerHTML = c ? `<div class="station">
-      <div class="row between"><b style="font-size:20px;letter-spacing:1px">${esc(c.call)}</b><span class="muted">checked in ${fmtT(c.time)}</span><button class="icon" data-a="deselect" title="Close">✕</button></div>
+      <div class="row between"><b style="font-size:20px;letter-spacing:1px">${esc(c.call)}</b><span class="spacer"></span>
+        <button class="small" data-a="toggleOut">${c.out ? 'Back in net' : 'Sign out (QRT)'}</button><button class="icon" data-a="deselect" title="Close">✕</button></div>
       <div class="grid">
-        <input id="stName" value="${esc(c.name)}" placeholder="Name" />
-        <input id="stLoc" value="${esc(c.loc)}" placeholder="Location / County" />
-        <select id="stKind" title="Check-in type">${opts(KINDS, c.kind)}</select>
-        <select id="stTraffic" title="Traffic">${TRAFFIC.map(t => `<option value="${t}"${t === c.traffic ? ' selected' : ''}>${t === 'None' ? 'No traffic' : t + ' traffic'}</option>`).join('')}</select>
+        <div><label>Name</label><input id="stName" value="${esc(c.name)}" /></div>
+        <div><label>Location / County</label><input id="stLoc" value="${esc(c.loc)}" /></div>
+        <div><label>Check-in type</label><select id="stKind">${opts(KINDS, c.kind)}</select></div>
+        <div><label>Traffic</label><select id="stTraffic">${TRAFFIC.map(t => `<option value="${t}"${t === c.traffic ? ' selected' : ''}>${t === 'None' ? 'No traffic' : t}</option>`).join('')}</select></div>
+        <div><label>Checked in at${TF === 'utc' ? ' (UTC)' : ''}</label><input id="stTime" type="time" value="${hhmm(c.time)}" /></div>
+        <div><label>Late check-in</label><select id="stLate"><option value="0"${c.late ? '' : ' selected'}>No</option><option value="1"${c.late ? ' selected' : ''}>Yes</option></select></div>
       </div></div>` : '';
-  $('noteTarget').innerHTML = c ? `New note for <b>${esc(c.call)}</b>${c.name ? ' (' + esc(c.name) + ')' : ''}` : 'New <b>general net note</b>. Click a station to tag the note to it';
-  $('noteInput').placeholder = c ? `What did ${c.call} report?` : 'General net note…';
+  const showWxBtn = /skywarn|emergency/i.test(n.type) && !s.end;
+  $('wxBtn').classList.toggle('hidden', !showWxBtn || ui.wx);
+  $('wxForm').classList.toggle('hidden', !ui.wx);
+  $('wxFor').textContent = c ? 'from ' + c.call : 'no station selected';
+  $('noteTarget').innerHTML = c ? `Note for <b>${esc(c.call)}</b>${c.name ? ' (' + esc(c.name) + ')' : ''}` : '<b>General net note</b>';
+  $('noteInput').placeholder = c ? `What did ${c.call} report?` : 'General net note… (click a station to tag the note)';
 
   const filtered = c && !ui.allNotes;
   const list = (filtered ? s.notes.filter(x => x.call === c.call) : s.notes).slice().reverse();
-  $('noteListTitle').textContent = filtered ? `Notes for ${c.call} (${list.length})` : `All notes (${list.length})`;
+  $('noteListTitle').textContent = filtered ? `Notes for ${c.call}` : 'Net log (newest first)';
   $('noteFilterBtn').classList.toggle('hidden', !c);
   $('noteFilterBtn').textContent = ui.allNotes && c ? `Only ${c.call}` : 'Show all';
-  $('noteList').innerHTML = list.map(x => `<div class="note${x.call ? ' tagged' : ''}"><div class="nh">
-      ${x.call ? `<span class="tag" data-a="pick" data-call="${esc(x.call)}">${esc(x.call)}</span>` : '<span class="tag gen">GENERAL</span>'}
-      <span class="muted">${fmtT(x.time)}</span><span class="spacer"></span><button class="icon" data-a="delNote" data-id="${x.id}" title="Delete note">✕</button></div>
-      <div class="nt">${esc(x.text)}</div></div>`).join('') || '<div class="muted" style="margin-top:10px">No notes yet.</div>';
+  $('noteList').innerHTML = list.map(noteHtml).join('') || '<div class="muted" style="margin-top:10px">No notes yet.</div>';
 
   $('annList').innerHTML = s.announcements.map(a => `<label class="ann${a.done ? ' done' : ''}"><input type="checkbox" data-a="annDone" data-id="${a.id}"${a.done ? ' checked' : ''} /><span>${esc(a.text)}</span><button class="icon" data-a="annDel" data-id="${a.id}" title="Remove">✕</button></label>`).join('')
     || '<div class="muted">No announcements for this session. Add one below, or set standing announcements in Edit Net.</div>';
@@ -571,30 +680,43 @@ function renderSide() {
 }
 
 function setSel(call) { ui.sel = call; ui.allNotes = false; renderLog(); renderSide(); }
+function flash(msg, ok) { $('callErr').textContent = msg; $('callErr').classList.toggle('msg', !!ok); }
 function checkIn(call) {
   const [n, s] = curSess(); if (s.end) return;
   call = call.toUpperCase();
-  if (!CALL_RE.test(call)) { $('callErr').textContent = 'Call sign must be 4–8 letters and numbers.'; return; }
+  if (!CALL_RE.test(call)) { flash('Call sign must be 4–8 letters and numbers.'); return; }
   $('callInput').value = ''; ui.act = -1;
-  if (s.checkins.some(c => c.call === call)) { $('callErr').textContent = `${call} is already checked in. Selected.`; ui.sel = call; ui.tab = 'notes'; renderSession(); $('callInput').focus(); return; }
+  if (s.checkins.some(c => c.call === call)) return recheck(call);
   const isNew = !n.members.some(m => m.call === call);
   const mem = upsertMember(n, { call });
-  s.checkins.push({ id: uid(), time: new Date().toISOString(), call, name: mem.name, loc: mem.loc, kind: 'Regular', traffic: 'None', done: false });
-  save(); ui.sel = call; ui.allNotes = false; ui.tab = 'notes'; $('callErr').textContent = '';
+  const time = new Date().toISOString();
+  const late = phaseIdx(s.phase || 'preamble') >= phaseIdx('ann');
+  s.checkins.push({ id: uid(), time, call, name: mem.name, loc: mem.loc, kind: 'Regular', traffic: 'None', done: false, late, rechecks: [], out: null });
+  save(); ui.sel = call; ui.allNotes = false; ui.tab = 'notes';
+  flash(`${call} checked in ${fmtT(time)}${late ? ' (late)' : ''}`, true);
   renderSession();
   if (isNew) $('stName').focus(); else $('callInput').focus();
+}
+function recheck(call) {
+  const [, s] = curSess(); if (s.end) return;
+  const c = s.checkins.find(x => x.call === call); if (!c) return;
+  const t = new Date().toISOString();
+  (c.rechecks ||= []).push(t); c.done = false; c.out = null;
+  save(); ui.sel = call; ui.tab = 'notes'; $('callInput').value = ''; ui.act = -1;
+  flash(`${call} recheck ${fmtT(t)}. Not counted twice.`, true);
+  renderSession(); $('callInput').focus();
 }
 function submitCall() {
   const [n, s] = curSess(); if (s.end) return;
   const q = $('callInput').value.trim().toUpperCase();
   if (n.mode === 'free') return checkIn(q);
   const it = ui.act >= 0 ? ui.items[ui.act] : null;
-  if (it) { if (it.t === 'in') { $('callInput').value = ''; ui.act = -1; setSel(it.call); renderRoll(); } else checkIn(it.call); return; }
+  if (it) return it.t === 'in' ? recheck(it.call) : checkIn(it.call);
   if (!q) return;
   if (s.checkins.some(c => c.call === q) || n.members.some(m => m.call === q)) return checkIn(q);
   const ms = ui.items.filter(x => x.t === 'm');
-  if (ms.length === 1) return checkIn(ms[0].call);
-  if (ms.length > 1) { $('callErr').textContent = `${ms.length} matches. Use ↑↓ or keep typing.`; return; }
+  if (ms.length === 1 && !ui.items.some(x => x.t === 'in')) return checkIn(ms[0].call);
+  if (ms.length >= 1) { flash(`${ms.length} match${ms.length > 1 ? 'es' : ''}. Use ↑↓ and Enter, or finish the call sign.`); return; }
   checkIn(q);
 }
 function addNote() {
@@ -605,10 +727,31 @@ function addNote() {
   s.notes.push({ id: uid(), time: new Date().toISOString(), call: call || null, text });
   save(); $('noteInput').value = ''; renderTop(); renderLog(); renderSide(); $('noteInput').focus();
 }
+function openWx() {
+  ui.wx = true; ui.tab = 'notes'; renderSide();
+  ['wxMag', 'wxLoc', 'wxRem'].forEach(id => $(id).value = '');
+  const c = ui.sel && curSess()[1].checkins.find(x => x.call === ui.sel);
+  if (c && c.loc) $('wxLoc').value = c.loc;
+  $('wxObs').value = hhmm(new Date().toISOString()); $('wxEvent').focus();
+}
+function saveWx() {
+  const [, s] = curSess(); const now = new Date().toISOString();
+  s.notes.push({ id: uid(), time: now, call: ui.sel || null, kind: 'wx', event: $('wxEvent').value, mag: $('wxMag').value.trim(),
+    meas: $('wxMeas').value, obs: $('wxObs').value ? withHHMM(now, $('wxObs').value) : null, loc: $('wxLoc').value.trim(), text: $('wxRem').value.trim(), relayed: null });
+  ui.wx = false; save(); renderTop(); renderLog(); renderSide();
+}
+function setPhase(k) {
+  const [, s] = curSess(); if (s.end || s.phase === k) return;
+  s.phase = k; logEvent(s, PHASES[phaseIdx(k)][1]); save();
+  ui.tab = (k === 'preamble' || k === 'closing') ? 'script' : k === 'ann' ? 'ann' : 'notes';
+  renderPhases(); renderSide();
+  if (k === 'checkins' || k === 'late') $('callInput').focus();
+}
 function endNet() {
   const [n, s] = curSess();
   const left = s.announcements.filter(a => !a.done).length;
   if (!confirm(`End ${n.name}?${left ? `\n\n${left} announcement(s) not marked as read.` : ''}`)) return;
+  s.phase = 'closing'; logEvent(s, 'Net closed');
   s.end = new Date().toISOString(); if (S.active && S.active.sessId === s.id) S.active = null; save();
   if (n.closing) ui.tab = 'script';
   renderSession();
@@ -616,7 +759,14 @@ function endNet() {
 function reopen() {
   const [n, s] = curSess(), [an] = activePair();
   if (an) { alert(`"${an.name}" is currently running. End it first.`); return; }
-  s.end = null; S.active = { netId: n.id, sessId: s.id }; save(); renderSession(); $('callInput').focus();
+  s.end = null; logEvent(s, 'Net reopened'); S.active = { netId: n.id, sessId: s.id }; save(); renderSession(); $('callInput').focus();
+}
+function changeNcs() {
+  const [, s] = curSess();
+  const v = (prompt(`Hand off net control. New NCS call sign (current: ${s.ncs}):`) || '').trim().toUpperCase();
+  if (!v || v === s.ncs) return;
+  if (!CALL_RE.test(v)) { alert('Call sign must be 4–8 letters and numbers.'); return; }
+  logEvent(s, `Net control handed to ${v} from ${s.ncs}`); s.ncs = v; save(); renderTop(); renderSide();
 }
 
 /* ---------------- Export / print ---------------- */
@@ -626,40 +776,48 @@ function download(name, text, type = 'text/csv') {
 }
 const csv = rows => rows.map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
 function sessionCsv(n, s) {
-  const inSet = new Set(s.checkins.map(c => c.call));
-  const notesFor = call => s.notes.filter(x => x.call === call).map(x => `[${fmtT(x.time)}] ${x.text}`).join(' | ');
-  const orphan = s.notes.filter(x => x.call && !inSet.has(x.call));
+  setTF(n);
+  const inSet = new Set(s.checkins.map(c => c.call)), st = stats(s);
+  const notesFor = call => s.notes.filter(x => x.call === call && !x.kind).map(x => `[${fmtT(x.time)}] ${x.text}`).join(' | ');
+  const orphan = s.notes.filter(x => x.call && !x.kind && !inSet.has(x.call));
+  const wx = s.notes.filter(x => x.kind === 'wx');
   return csv([
-    ['Net', n.name], ['Type', n.type], ['Net Control', s.ncs], ['Date', fmtD(s.start)], ['Start', fmtT(s.start)], ['End', s.end ? fmtT(s.end) : ''], ['Repeater', repText(n.repeater)], [],
-    ['#', 'Time', 'Call Sign', 'Name', 'Location', 'Type', 'Traffic', 'Notes'],
-    ...s.checkins.map((c, i) => [i + 1, fmtT(c.time), c.call, c.name, c.loc, c.kind, c.traffic, notesFor(c.call)]),
-    [], ['General Notes'], ['Time', 'Note'], ...s.notes.filter(x => !x.call).map(x => [fmtT(x.time), x.text]),
+    ['Net', n.name], ['Type', n.type], ['Date', fmtD(s.start)],
+    ['Opened', fmtT(s.start), zulu(new Date(s.start))], ['Closed', s.end ? fmtT(s.end) : '', s.end ? zulu(new Date(s.end)) : ''],
+    ['Net Control', s.ncs], ['Repeater', repText(n.repeater)], ['QNI', st.qni], ['QTC', st.qtc], ['QTR (min)', st.qtr], [],
+    ['#', 'Time In', 'Call Sign', 'Name', 'Location', 'Type', 'Traffic', 'Late', 'Rechecks', 'Signed Out', 'Notes'],
+    ...s.checkins.map((c, i) => [i + 1, fmtT(c.time), c.call, c.name, c.loc, c.kind, c.traffic, c.late ? 'Yes' : '', (c.rechecks || []).map(fmtT).join(' '), fmtT(c.out), notesFor(c.call)]),
+    ...(wx.length ? [[], ['Storm Reports'], ['Reported', 'Observed', 'Call', 'Event', 'Size/Speed', 'Measured/Est', 'Location', 'Remarks', 'Relayed to NWS'],
+      ...wx.map(x => [fmtT(x.time), fmtT(x.obs), x.call || '', x.event, x.mag, x.meas, x.loc, x.text, fmtT(x.relayed)])] : []),
+    [], ['Net Log (general notes and events)'], ['Time', 'Note'], ...s.notes.filter(x => !x.call && x.kind !== 'wx').map(x => [fmtT(x.time), (x.kind === 'event' ? '— ' : '') + x.text]),
     ...(orphan.length ? [[], ['Notes for stations not checked in'], ['Time', 'Call', 'Note'], ...orphan.map(x => [fmtT(x.time), x.call, x.text])] : []),
     [], ['Announcements'], ...s.announcements.map(a => [a.text, a.done ? 'Read' : 'Not read'])
   ]);
 }
 const fileName = (n, s) => `${n.name.replace(/\W+/g, '_')}_${s.start.slice(0, 10)}.csv`;
 function printSession(n, s) {
-  const notesFor = call => s.notes.filter(x => x.call === call).map(x => `${fmtT(x.time)}: ${esc(x.text)}`).join('<br>');
-  const gen = s.notes.filter(x => !x.call);
+  setTF(n);
+  const notesFor = call => s.notes.filter(x => x.call === call && !x.kind).map(x => `${fmtT(x.time)}: ${esc(x.text)}`).join('<br>');
+  const gen = s.notes.filter(x => !x.call && x.kind !== 'wx'), wx = s.notes.filter(x => x.kind === 'wx');
   $('printView').innerHTML = `<h1>${esc(n.name)}</h1>
-    <div>${esc(fmtD(s.start))} · ${fmtT(s.start)}${s.end ? '–' + fmtT(s.end) : ''} · NCS ${esc(s.ncs)} · ${esc(repText(n.repeater))}</div>
-    <h2>Check-ins (${s.checkins.length})</h2>
-    <table><thead><tr><th>#</th><th>Time</th><th>Call</th><th>Name</th><th>Location</th><th>Type</th><th>Traffic</th><th>Notes</th></tr></thead><tbody>
-    ${s.checkins.map((c, i) => `<tr><td>${i + 1}</td><td>${fmtT(c.time)}</td><td><b>${esc(c.call)}</b></td><td>${esc(c.name)}</td><td>${esc(c.loc)}</td><td>${esc(c.kind)}</td><td>${c.traffic === 'None' ? '' : c.traffic}</td><td>${notesFor(c.call)}</td></tr>`).join('')}</tbody></table>
-    ${gen.length ? `<h2>General Notes</h2><table><tbody>${gen.map(x => `<tr><td style="width:70px">${fmtT(x.time)}</td><td>${esc(x.text)}</td></tr>`).join('')}</tbody></table>` : ''}
+    <pre style="font:12px/1.5 ui-monospace,monospace;white-space:pre-wrap">${esc(summaryText(n, s))}</pre>
+    <h2>Check-ins</h2>
+    <table><thead><tr><th>#</th><th>Time</th><th>Call</th><th>Name</th><th>Location</th><th>Type</th><th>Traffic</th><th>Late</th><th>Rechecks</th><th>Out</th><th>Notes</th></tr></thead><tbody>
+    ${s.checkins.map((c, i) => `<tr><td>${i + 1}</td><td>${fmtT(c.time)}</td><td><b>${esc(c.call)}</b></td><td>${esc(c.name)}</td><td>${esc(c.loc)}</td><td>${esc(c.kind)}</td><td>${c.traffic === 'None' ? '' : c.traffic}</td><td>${c.late ? 'Yes' : ''}</td><td>${(c.rechecks || []).map(fmtT).join(', ')}</td><td>${fmtT(c.out)}</td><td>${notesFor(c.call)}</td></tr>`).join('')}</tbody></table>
+    ${wx.length ? `<h2>Storm Reports</h2><table><thead><tr><th>Reported</th><th>Observed</th><th>Call</th><th>Report</th><th>Remarks</th><th>Relayed</th></tr></thead><tbody>${wx.map(x => `<tr><td>${fmtT(x.time)}</td><td>${fmtT(x.obs)}</td><td>${esc(x.call || '')}</td><td>${esc(wxText(x))}</td><td>${esc(x.text)}</td><td>${fmtT(x.relayed)}</td></tr>`).join('')}</tbody></table>` : ''}
+    ${gen.length ? `<h2>Net Log</h2><table><tbody>${gen.map(x => `<tr><td style="width:70px">${fmtT(x.time)}</td><td>${x.kind === 'event' ? '<i>' + esc(x.text) + '</i>' : esc(x.text)}</td></tr>`).join('')}</tbody></table>` : ''}
     ${s.announcements.length ? `<h2>Announcements</h2><ul>${s.announcements.map(a => `<li>${esc(a.text)}${a.done ? '' : ' <i>(not read)</i>'}</li>`).join('')}</ul>` : ''}`;
   window.print();
 }
 
 /* ---------------- History ---------------- */
 function openHistory(id) {
-  const n = net(id); ui.netId = id;
+  const n = net(id); ui.netId = id; setTF(n);
   $('hTitle').textContent = n.name + ': History';
   $('hStart').dataset.id = id;
   $('hEmpty').classList.toggle('hidden', n.sessions.length > 0);
-  $('hBody').innerHTML = n.sessions.map(s => `<tr><td>${fmtD(s.start)} ${s.end ? '' : '<span class="pill live">LIVE</span>'}</td><td>${fmtT(s.start)}${s.end ? '–' + fmtT(s.end) : ''}</td><td>${esc(s.ncs)}</td><td>${s.checkins.length}</td><td>${s.notes.length}</td>
-    <td class="row"><button class="small" data-a="openSess" data-id="${s.id}">Open</button><button class="small" data-a="csvSess" data-id="${s.id}">CSV</button><button class="small danger" data-a="delSess" data-id="${s.id}">Delete</button></td></tr>`).join('');
+  $('hBody').innerHTML = n.sessions.map(s => { const st = stats(s); return `<tr><td>${fmtD(s.start)} ${s.end ? '' : '<span class="pill live">LIVE</span>'}</td><td>${fmtT(s.start)}${s.end ? '–' + fmtT(s.end) : ''}</td><td>${esc(s.ncs)}</td><td>${st.qni}</td><td>${st.qtc}</td><td>${st.qtr}</td>
+    <td class="row"><button class="small" data-a="openSess" data-id="${s.id}">Open</button><button class="small" data-a="csvSess" data-id="${s.id}">CSV</button><button class="small danger" data-a="delSess" data-id="${s.id}">Delete</button></td></tr>`; }).join('');
   show('vHistory');
 }
 
@@ -669,7 +827,7 @@ const actions = {
   resume,
   newNet: () => openEdit(newNet(), true),
   editNet: el => openEdit(net(el.dataset.id), false),
-  rosterNet: el => { openEdit(net(el.dataset.id), false); $('mCall').scrollIntoView({ block: 'center' }); $('mCall').focus(); },
+  rosterNet: el => { openEdit(net(el.dataset.id), false); $('rosterSec').scrollIntoView({ block: 'start' }); $('mCall').focus({ preventScroll: true }); },
   editCurrent: () => openEdit(net(ui.netId), false, 'session'),
   history: el => openHistory(el.dataset.id),
   startNet: el => startNet(el.dataset.id),
@@ -697,15 +855,22 @@ const actions = {
   pick: el => { ui.tab = 'notes'; $('callInput').value = ''; ui.act = -1; setSel(el.dataset.call); renderRoll(); $('noteInput').focus(); },
   deselect: () => setSel(null),
   rollIn: el => checkIn(el.dataset.call),
+  recheck: el => recheck(el.dataset.call),
   done: el => { const [, s] = curSess(); const c = s.checkins.find(x => x.call === el.dataset.call); c.done = !c.done; save(); renderLog(); },
+  toggleOut: () => { const [, s] = curSess(); const c = s.checkins.find(x => x.call === ui.sel); if (!c) return; c.out = c.out ? null : new Date().toISOString(); if (c.out) logEvent(s, `${c.call} signed out`); save(); renderLog(); renderSide(); },
   delCi: el => {
-    const [, s] = curSess(); const call = el.dataset.call; const nn = s.notes.filter(x => x.call === call).length;
+    const [, s] = curSess(); const call = el.dataset.call; const nn = realNotes(s).filter(x => x.call === call).length;
     if (!confirm(`Remove ${call} from this session's check-ins?${nn ? `\n(${nn} note(s) for ${call} will be kept.)` : ''}`)) return;
     s.checkins = s.checkins.filter(x => x.call !== call); if (ui.sel === call) ui.sel = null; save(); renderSession();
   },
+  phase: el => setPhase(el.dataset.v),
+  changeNcs,
+  copySummary: () => { const t = $('summaryText').textContent; (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => { $('summary').querySelector('button').textContent = 'Copied'; }, () => prompt('Copy the summary:', t)); },
   tab: el => { ui.tab = el.dataset.v; renderSide(); if (ui.tab === 'notes') $('noteInput').focus(); if (ui.tab === 'ann') $('annInput').focus(); },
   toggleNoteFilter: () => { ui.allNotes = !ui.allNotes; renderSide(); },
   delNote: el => { const [, s] = curSess(); if (!confirm('Delete this note?')) return; s.notes = s.notes.filter(x => x.id !== el.dataset.id); save(); renderTop(); renderLog(); renderSide(); },
+  relay: el => { const [, s] = curSess(); const x = s.notes.find(y => y.id === el.dataset.id); x.relayed = el.checked ? new Date().toISOString() : null; save(); renderSide(); },
+  wxOpen: openWx, wxSave: saveWx, wxCancel: () => { ui.wx = false; renderSide(); },
   annDone: el => { const [, s] = curSess(); const a = s.announcements.find(x => x.id === el.dataset.id); a.done = el.checked; save(); renderSide(); },
   annDel: (el, e) => { e.preventDefault(); const [, s] = curSess(); s.announcements = s.announcements.filter(x => x.id !== el.dataset.id); save(); renderSide(); },
   endNet, reopen,
@@ -721,13 +886,15 @@ document.addEventListener('click', e => {
 
 // Station detail edits (name/location also update the roster)
 document.addEventListener('change', e => {
-  const id = e.target.id; if (!['stName', 'stLoc', 'stKind', 'stTraffic'].includes(id)) return;
+  const id = e.target.id; if (!['stName', 'stLoc', 'stKind', 'stTraffic', 'stTime', 'stLate'].includes(id)) return;
   const [n, s] = curSess(); const c = s && s.checkins.find(x => x.call === ui.sel); if (!c) return;
   const v = e.target.value.trim();
   if (id === 'stName' || id === 'stLoc') {
     const k = id === 'stName' ? 'name' : 'loc'; c[k] = v;
     const mem = n.members.find(m => m.call === c.call); if (mem) mem[k] = v;
-  } else c[id === 'stKind' ? 'kind' : 'traffic'] = v;
+  } else if (id === 'stTime') c.time = withHHMM(c.time, v);
+  else if (id === 'stLate') c.late = v === '1';
+  else c[id === 'stKind' ? 'kind' : 'traffic'] = v;
   save(); renderTop(); renderLog();
 });
 document.addEventListener('keydown', e => {
@@ -736,6 +903,7 @@ document.addEventListener('keydown', e => {
     e.preventDefault(); e.target.dispatchEvent(new Event('change', { bubbles: true }));
     $(id === 'stName' ? 'stLoc' : 'callInput').focus(); return;
   }
+  if (['wxMag', 'wxLoc', 'wxRem'].includes(id) && e.key === 'Enter') { e.preventDefault(); saveWx(); return; }
   if (!onSession() || /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
   if (e.key === '/') { e.preventDefault(); $('callInput').focus(); }
   else if (e.key === 'n') { e.preventDefault(); ui.tab = 'notes'; renderSide(); $('noteInput').focus(); }
@@ -743,14 +911,14 @@ document.addEventListener('keydown', e => {
 
 $('callInput').addEventListener('input', () => {
   const el = $('callInput'); el.value = el.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-  ui.act = -1; $('callErr').textContent = ''; renderRoll();
+  ui.act = -1; flash(''); renderRoll();
 });
 $('callInput').addEventListener('keydown', e => {
   const len = ui.items.length;
   if (e.key === 'ArrowDown' && len) { e.preventDefault(); ui.act = (ui.act + 1) % len; renderRoll(); }
   else if (e.key === 'ArrowUp' && len) { e.preventDefault(); ui.act = ui.act <= 0 ? len - 1 : ui.act - 1; renderRoll(); }
   else if (e.key === 'Enter') { e.preventDefault(); submitCall(); }
-  else if (e.key === 'Escape') { $('callInput').value = ''; ui.act = -1; $('callErr').textContent = ''; renderRoll(); }
+  else if (e.key === 'Escape') { $('callInput').value = ''; ui.act = -1; flash(''); renderRoll(); }
 });
 $('noteInput').addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addNote(); }
