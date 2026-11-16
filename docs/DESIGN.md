@@ -99,13 +99,32 @@ Standard Users never see other members' contact details. Every write goes throug
 
 Today there is one local user, who is the Admin.
 
-### Nets, sessions, log entries
-**To be designed together before implementation.** Known requirements so far:
-- A net belongs to a group; group type decides the available net screens.
-- Check-in net screen differs from a Skywarn activation screen.
-- Skywarn reports need a "Relayed to NWS?" checkbox (the person beside net control relays; the app does not contact NWS).
-- Station page will show every check-in, note, and storm report for that station.
-- **Check-in edits and deletes**: Admins and Net Controllers (permission `nets.editLog`) only. Standard Users can never delete a check-in, including their own. Every edit and delete is recorded in the change log.
+### Nets
+
+Two kinds of net, built one at a time: **roll call nets** (built) and **net activations** for severe weather (to be designed next).
+
+#### Roll call net (built)
+How a normal check-in net runs: net control calls each member; the member answers with their call; they are checked in.
+
+- **Start Net** (group page, `nets.run`): the group's active members on active stations are put on the roll in alphabetical call order. Inactive members and Silent Key stations are left off.
+- **Now Calling** shows the call, name, location, and standing notes, with four buttons (keyboard in brackets):
+  - **Checked In** [C]: time-stamped.
+  - **Absent** [A]: no answer; can still check in late.
+  - **Skip** [S]: moves the station to the end of the list to be called again; flagged "Skipped once/n×".
+  - **Silent Key** [K]: after confirming, also marks the station Silent Key in the directory so it is never called again. Undo restores the station.
+  - **Undo** [U] puts the last station back exactly as it was (status, position, time).
+- **Late check-ins / missed calls**: a call box with type-ahead (prefix or suffix). Stations on this net's roll who have not checked in come first, then the rest of the directory, then "new station". A station not in the group is checked in as a **visitor**; a new call is added to the directory.
+- **Not Checked In** tab: everyone not checked in, alphabetical, each with a Check In button. Also **Checked In** (with times, Late, Visitor) and **Log** (every station, status editable).
+- **End Net**: anyone never answered (not called or skipped) is recorded Absent. The summary offers to add visitors to the group.
+- **After the net**: Admins and Net Controllers (`nets.editLog`) can change statuses, delete a check-in, reopen, or delete the net. Every change is in the change log. Standard Users can never delete a check-in.
+- **Where it shows up**: group page Nets panel (start, resume live, past nets), a LIVE button in the header while a net runs, each station's Net Activity, and the member box on the group page.
+
+Data: `NetSession` (group, title, net control call, start, end) and one `Checkin` per station per net (call at the time, position, status, time, late, visitor, skip count).
+
+#### Still to design
+- Net activations (severe weather): levels, spotter tracking, storm reports with a "Relayed to NWS?" checkbox (the person beside net control relays; the app does not contact NWS).
+- Net definitions with schedule, script/preamble, and repeater (see WISHLIST: linked repeater systems).
+- Merging shared backup files between net controllers.
 
 ## Screens (Phase 1)
 

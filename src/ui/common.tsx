@@ -12,7 +12,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const push = useCallback((text: string, error = false) => {
     const id = Date.now() + Math.random();
-    setToasts((t) => [...t, { id, text, error }]);
+    setToasts((t) => [...t, { id, text, error }].slice(-3)); // keep the corner clear: newest three only
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), error ? 7000 : 3500);
   }, []);
   return (

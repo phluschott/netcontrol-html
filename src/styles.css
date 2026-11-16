@@ -110,6 +110,8 @@ th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--bor
 th { color: var(--dim); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; background: var(--ov1); border-bottom-color: var(--border); white-space: nowrap; position: sticky; top: 0; }
 tbody tr:hover td { background: var(--ov1); }
 tr.clickable { cursor: pointer; }
+tr.selected td { background: var(--surface-active) !important; }
+tr.selected td:first-child { box-shadow: inset 2px 0 0 var(--green2); }
 tr.inactive td { color: var(--dim); }
 td.actions { text-align: right; white-space: nowrap; }
 
@@ -156,3 +158,15 @@ mark { background: none; color: var(--green); }
 .conflict label .src { color: var(--dim); font-size: 10px; text-transform: uppercase; letter-spacing: .8px; }
 
 footer.app-foot { text-align: center; color: var(--dim); font-size: 10px; padding: 16px; border-top: 1px solid var(--border-subtle); }
+
+/* ---------- roll call ---------- */
+.call-buttons { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }
+.cb { justify-content: center; flex-direction: column; gap: 4px; padding: 16px 8px; font-size: 15px; letter-spacing: 1px; text-transform: uppercase; border-width: 1px; }
+.cb kbd { font-size: 10px; opacity: .7; }
+.cb.checkin { color: var(--green3); border-color: #2f8f68; background: rgba(74,222,128,.10); font-size: 17px; }
+.cb.checkin:hover { background: rgba(74,222,128,.2); border-color: var(--green2); }
+.cb.skip { color: #fde68a; border-color: #854d0e; }
+.cb.sk { color: var(--dim); }
+@media (max-width: 640px) { .call-buttons { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+a.btn.live, .btn.live { color: var(--green3); border-color: var(--green-bd); background: var(--green-bg); }
+a.btn:hover { text-decoration: none; }

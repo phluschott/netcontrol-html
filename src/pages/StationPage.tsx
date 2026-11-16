@@ -9,6 +9,8 @@ import {
 import { GROUP_TYPE_LABEL, STATION_STATUS_LABEL, type Membership } from '../data/types';
 import { MembershipModal, RoleChips, StationFormModal } from '../ui/forms';
 import { fmtDate, fmtDateTime, useAction } from '../ui/common';
+import { CHECKIN_STATUS_LABEL } from '../data/types';
+import { live } from '../data/db';
 
 export default function StationPage() {
   const { call = '' } = useParams();
@@ -146,10 +148,7 @@ export default function StationPage() {
             </div>
           </div>
 
-          <div className="panel">
-            <div className="panel-header"><span className="panel-title">Net Activity</span><span className="muted">check-ins · notes · storm reports</span></div>
-            <div className="empty">Check-ins, notes, and storm reports for {station.call} across every net will appear here once nets are built.</div>
-          </div>
+          <NetActivity stationId={station.id} call={station.call} />
 
           <div className="panel">
             <div className="panel-header"><span className="panel-title">Record History</span><span className="muted">changes to this station and its memberships</span></div>
@@ -183,3 +182,45 @@ export default function StationPage() {
 
 const fmt = (v: unknown) => (Array.isArray(v) ? v.join(', ') || '(none)' : v === '' || v == null ? '(blank)' : String(v));
 
+
+/** Every net this station was on the roll for or checked in to, across all groups (only groups whose history the user may see). */
+function NetActivity({ stationId, call }: { stationId: string; call: string }) {
+  const dir = useDirectory();
+  const rows = useLiveQuery(async () => {
+    const cs = live(await db.checkins.where('stationId').equals(stationId).toArray());
+    const sessions = await db.sessions.bulkGet(cs.map((c) => c.sessionId));
+    return cs.map((c, i) => ({ c, s: sessions[i] })).filter((x) => x.s && !x.s.deletedAt)
+      .sort((a, b) => b.s!.startedAt.localeCompare(a.s!.startedAt));
+  }, [stationId]);
+  if (!dir || !rows) return null;
+  const visible = rows.filter(({ c }) => hasPerm(dir, c.groupId, 'nets.history'));
+  const inCount = visible.filter(({ c }) => c.status === 'checked_in').length;
+  const t = (iso: string | null) => (iso ? new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '');
+  return (
+    <div className="panel">
+      <div className="panel-header">
+        <span className="panel-title">Net Activity<span className="panel-count">{inCount} of {visible.length}</span></span>
+        <span className="muted">checked in of nets on the roll</span>
+      </div>
+      <div className="table-wrap" style={{ maxHeight: 340, overflowY: 'auto' }}>
+        <table>
+          <thead><tr><th>Date</th><th>Net</th><th>Group</th><th>Status</th><th>Time</th></tr></thead>
+          <tbody>
+            {visible.map(({ c, s }) => (
+              <tr key={c.id}>
+                <td style={{ whiteSpace: 'nowrap' }}>{fmtDate(s!.startedAt)}</td>
+                <td><Link to={`/nets/${s!.id}`}>{s!.title}</Link></td>
+                <td className="muted">{dir.groupById.get(c.groupId)?.name ?? '–'}</td>
+                <td><span className={'chip ' + (c.status === 'checked_in' ? 'green' : c.status === 'absent' ? '' : 'dim')}>{CHECKIN_STATUS_LABEL[c.status]}</span>
+                  {c.late && <span className="chip yellow" style={{ marginLeft: 4 }}>Late</span>}{c.visitor && <span className="chip cyan" style={{ marginLeft: 4 }}>Visitor</span>}
+                  {c.call !== call && <span className="muted"> as {c.call}</span>}</td>
+                <td className="mono">{t(c.statusAt)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {!visible.length && <div className="empty">{call} has not been on any net yet.</div>}
+      </div>
+    </div>
+  );
+}

@@ -348,3 +348,74 @@ describe('encrypted backups', () => {
     expect((await restoreFromText(plain)).groups).toBe(1);
   });
 });
+
+/* ---------------- roll call nets ---------------- */
+import { addVisitorsToGroup, callQueue, deleteCheckin, endSession, lateCheckIn, reopenSession, sessionCounts, setCheckinStatus, startRollCall } from './nets';
+
+async function rollGroup() {
+  const g = await createGroup({ name: 'Skywarn', type: 'skywarn' });
+  for (const call of ['W9CCC', 'K9AAA', 'N9BBB', 'KD9DDD']) await addStationToGroup(g.id, { call });
+  const inactive = await addStationToGroup(g.id, { call: 'W9OUT' });
+  await updateMembership(inactive.membership.id, { active: false });
+  const sk = await addStationToGroup(g.id, { call: 'W9SK' });
+  await updateStation(sk.station.id, { status: 'sk' });
+  return g;
+}
+const rowsOf = async (sid: string) => live(await db.checkins.where('sessionId').equals(sid).toArray());
+
+describe('roll call net', () => {
+  it('calls active members alphabetically and skips inactive and Silent Key stations', async () => {
+    const g = await rollGroup();
+    const s = await startRollCall(g.id);
+    expect(callQueue(await rowsOf(s.id)).map((r) => r.call)).toEqual(['K9AAA', 'KD9DDD', 'N9BBB', 'W9CCC']);
+    await expect(startRollCall(g.id)).rejects.toThrow(/already running/);
+  });
+
+  it('checked in / absent / skip / silent key, then late check-ins and end', async () => {
+    const g = await rollGroup();
+    const s = await startRollCall(g.id);
+    let q = callQueue(await rowsOf(s.id));
+    await setCheckinStatus(q[0].id, 'checked_in');            // K9AAA
+    await setCheckinStatus(q[1].id, 'skipped');               // KD9DDD -> end of list
+    q = callQueue(await rowsOf(s.id));
+    expect(q.map((r) => r.call)).toEqual(['N9BBB', 'W9CCC', 'KD9DDD']);
+    await setCheckinStatus(q[0].id, 'absent');                // N9BBB
+    const sk = await setCheckinStatus(q[1].id, 'sk');         // W9CCC
+    expect((await findStationByCall('W9CCC'))!.station.status).toBe('sk');
+    await setCheckinStatus(sk.id, 'absent');                  // undo Silent Key restores the station
+    expect((await findStationByCall('W9CCC'))!.station.status).toBe('active');
+    // KD9DDD still waiting (skipped). Late check-ins:
+    const late1 = await lateCheckIn(s.id, 'n9bbb');           // was absent
+    expect(late1).toMatchObject({ status: 'checked_in', late: true, visitor: false });
+    const visitor = await lateCheckIn(s.id, 'KC9NEW/M');      // not in group, not in directory
+    expect(visitor).toMatchObject({ call: 'KC9NEW', late: true, visitor: true });
+    await expect(lateCheckIn(s.id, 'K9AAA')).rejects.toThrow(/already checked in/);
+    expect((await endSession(s.id)).absent).toBe(1);          // KD9DDD never answered
+    const c = sessionCounts(await rowsOf(s.id));
+    expect(c).toMatchObject({ total: 5, checkedIn: 3, late: 2, visitors: 1, absent: 2, pending: 0, skipped: 0 });
+    await addVisitorsToGroup(s.id, [visitor.stationId]);
+    expect(live(await db.memberships.where('groupId').equals(g.id).toArray()).map((m) => m.stationId)).toContain(visitor.stationId);
+  });
+
+  it('only Net Controllers and Admins change a net; afterwards only they can edit or delete', async () => {
+    const g = await rollGroup();
+    const s = await startRollCall(g.id);
+    const first = callQueue(await rowsOf(s.id))[0];
+    const std = await addUser('Stu');
+    await assignRoles(g.id, std, ['standard']);
+    await actAs(std);
+    await expect(setCheckinStatus(first.id, 'checked_in')).rejects.toThrow(/permission/);
+    await expect(startRollCall(g.id)).rejects.toThrow(/permission|already running/);
+    const nc = await addUser('Nora');
+    await db.meta.put({ key: 'currentUserId', value: (await db.users.toArray()).find((u) => u.isAdmin)!.id });
+    await assignRoles(g.id, nc, ['net_controller']);
+    await actAs(nc);
+    await setCheckinStatus(first.id, 'checked_in');
+    await endSession(s.id);
+    await setCheckinStatus(first.id, 'absent');               // NC holds nets.editLog
+    await deleteCheckin(first.id);
+    await reopenSession(s.id);
+    await actAs(std);
+    await expect(deleteCheckin((await rowsOf(s.id))[0].id)).rejects.toThrow(/permission/);
+  });
+});

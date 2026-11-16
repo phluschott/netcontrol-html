@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
-import { NavLink, Navigate, Route, Routes, Link } from 'react-router-dom';
+import { NavLink, Navigate, Route, Routes, Link, useLocation } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { getMeta } from './data/db';
 import { Clock } from './ui/common';
 import SearchPalette from './ui/SearchPalette';
 import GroupsPage from './pages/GroupsPage';
@@ -9,6 +8,8 @@ import GroupPage from './pages/GroupPage';
 import StationsPage from './pages/StationsPage';
 import StationPage from './pages/StationPage';
 import SettingsPage from './pages/SettingsPage';
+import NetPage from './pages/NetPage';
+import { db, getMeta, live } from './data/db';
 
 const BACKUP_DUE_DAYS = 7;
 
@@ -21,6 +22,8 @@ export default function App() {
     return !last || Date.now() - new Date(last).getTime() > BACKUP_DUE_DAYS * 864e5;
   });
 
+  const liveNets = useLiveQuery(async () => live(await db.sessions.toArray()).filter((x) => !x.endedAt));
+  const location = useLocation();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setSearching(true); }
@@ -40,6 +43,9 @@ export default function App() {
         </nav>
         <button className="search-btn" onClick={() => setSearching(true)}>Search <kbd>Ctrl K</kbd></button>
         {backupDue && <Link to="/settings" className="chip yellow" title="Download a backup from Settings">Backup due</Link>}
+        {(liveNets ?? []).filter((n) => location.pathname !== `/nets/${n.id}`).map((n) => (
+          <Link key={n.id} to={`/nets/${n.id}`} className="btn live" style={{ padding: '3px 10px', fontSize: 11 }}>● LIVE: {n.title}</Link>
+        ))}
         <Clock />
       </header>
       <main>
@@ -50,6 +56,7 @@ export default function App() {
           <Route path="/stations" element={<StationsPage />} />
           <Route path="/stations/:call" element={<StationPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/nets/:id" element={<NetPage />} />
           <Route path="*" element={<Navigate to="/groups" replace />} />
         </Routes>
       </main>

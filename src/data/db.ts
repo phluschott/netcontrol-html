@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { AuditEntry, CustomRole, Group, GroupAccess, Membership, MetaKV, Station, User } from './types';
+import type { AuditEntry, Checkin, CustomRole, Group, GroupAccess, Membership, MetaKV, NetSession, Station, User } from './types';
 
 export class NetControlDB extends Dexie {
   stations!: Table<Station, string>;
@@ -8,6 +8,8 @@ export class NetControlDB extends Dexie {
   users!: Table<User, string>;
   groupAccess!: Table<GroupAccess, string>;
   roles!: Table<CustomRole, string>;
+  sessions!: Table<NetSession, string>;
+  checkins!: Table<Checkin, string>;
   audit!: Table<AuditEntry, string>;
   meta!: Table<MetaKV, string>;
 
@@ -33,12 +35,17 @@ export class NetControlDB extends Dexie {
         delete a.role;
       });
     });
+    // v3: nets. A session is one time a net is held; each station in it has one check-in row.
+    this.version(3).stores({
+      sessions: 'id, groupId, startedAt',
+      checkins: 'id, sessionId, stationId, groupId, &[sessionId+stationId]',
+    });
   }
 }
 
 export const db = new NetControlDB();
 
-export const TABLES = ['stations', 'groups', 'memberships', 'users', 'groupAccess', 'roles', 'audit', 'meta'] as const;
+export const TABLES = ['stations', 'groups', 'memberships', 'users', 'groupAccess', 'roles', 'sessions', 'checkins', 'audit', 'meta'] as const;
 export type TableName = (typeof TABLES)[number];
 
 export async function getMeta<T>(key: string): Promise<T | undefined> {

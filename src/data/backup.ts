@@ -66,6 +66,8 @@ function upgradeBackup(f: BackupFile): BackupFile {
       users: users.map((u) => ({ ...u, isAdmin: u.isAdmin === true || admins.has(u.id) })),
       groupAccess: access.map(({ role, ...a }) => ({ ...a, roleIds: Array.isArray(a.roleIds) ? a.roleIds : [map[role as string] ?? 'standard'] })),
       roles: f.tables.roles ?? [],
+      sessions: f.tables.sessions ?? [],
+      checkins: f.tables.checkins ?? [],
     },
   };
 }

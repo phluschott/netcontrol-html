@@ -13,6 +13,8 @@ import { downloadText, toCsv } from '../lib/csv';
 import ImportModal from './ImportModal';
 import { sampleCsvRows } from '../data/importPlan';
 import AccessPanel from './AccessPanel';
+import NetsPanel from './NetsPanel';
+import MemberBox from './MemberBox';
 
 type RoleFilter = 'all' | MemberRole | 'inactive';
 
@@ -27,6 +29,7 @@ export default function GroupPage() {
   const [adding, setAdding] = useState(false);
   const [importing, setImporting] = useState(false);
   const [editingM, setEditingM] = useState<{ m: Membership; s: Station } | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const group = dir?.groupById.get(id);
   const members = useMemo(() => {
@@ -41,6 +44,7 @@ export default function GroupPage() {
     return ranked.map(({ station }) => ({ s: station, m: mByStation.get(station.id)! }));
   }, [members, roleFilter, q]);
 
+  const selected = members.find((x) => x.s.id === selectedId) ?? null;
   if (!dir) return null;
   if (!group) return <div className="panel"><div className="empty">Group not found. <Link to="/groups">Back to groups</Link></div></div>;
 
@@ -104,7 +108,7 @@ export default function GroupPage() {
               <thead><tr><th>Call</th><th>Name</th><th>Location</th><th>Roles</th><th>Spotter ID</th><th>Joined</th><th /></tr></thead>
               <tbody>
                 {canSeeMembers && shown.map(({ m, s }) => (
-                  <tr key={m.id} className={'clickable' + (m.active && s.status === 'active' ? '' : ' inactive')} onClick={() => nav(`/stations/${s.call}`)}>
+                  <tr key={m.id} className={'clickable' + (m.active && s.status === 'active' ? '' : ' inactive') + (selectedId === s.id ? ' selected' : '')} onClick={() => setSelectedId(selectedId === s.id ? null : s.id)}>
                     <td className="call"><Highlight text={s.call} q={q.toUpperCase().replace(/[^A-Z0-9]/g, '')} />{s.status === 'sk' && <span className="chip" style={{ marginLeft: 6 }}>SK</span>}</td>
                     <td>{s.name || s.onAirName}{distinctOnAirName(s) && <span className="muted"> “{distinctOnAirName(s)}”</span>}</td>
                     <td>{stationLocation(s)}</td>
@@ -138,10 +142,9 @@ export default function GroupPage() {
               </dl>
             </div>
           </div>
-          <div className="panel">
-            <div className="panel-header"><span className="panel-title">Nets</span></div>
-            <div className="empty">Nets for this group come next. We will design them together first.</div>
-          </div>
+          {selected && <MemberBox key={selected.s.id} station={selected.s} membership={selected.m} groupId={group.id} dir={dir}
+            onClose={() => setSelectedId(null)} onEdit={canManage ? () => setEditingM(selected) : undefined} />}
+          <NetsPanel group={group} dir={dir} />
           <AccessPanel group={group} dir={dir} />
         </div>
       </div>

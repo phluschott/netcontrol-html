@@ -100,7 +100,7 @@ export interface AuditEntry {
   id: ID;
   at: string;
   userId: ID;
-  entity: 'station' | 'group' | 'membership' | 'groupAccess' | 'role' | 'user' | 'backup';
+  entity: 'station' | 'group' | 'membership' | 'groupAccess' | 'role' | 'user' | 'backup' | 'session' | 'checkin';
   entityId: ID;
   action: 'create' | 'update' | 'delete' | 'restore' | 'import';
   changes: Record<string, [unknown, unknown]> | null;
@@ -110,4 +110,50 @@ export interface AuditEntry {
 export interface MetaKV {
   key: string;
   value: unknown;
+}
+
+/* ---------------- nets ---------------- */
+
+export type SessionKind = 'rollcall';
+
+/** One time a net is held. */
+export interface NetSession extends Meta {
+  groupId: ID;
+  kind: SessionKind;
+  title: string;
+  startedAt: string;
+  endedAt: string | null;
+  /** Call sign of net control, shown in logs. */
+  ncsCall: string;
+}
+
+export type CheckinStatus = 'pending' | 'checked_in' | 'absent' | 'skipped' | 'sk';
+export const CHECKIN_STATUS_LABEL: Record<CheckinStatus, string> = {
+  pending: 'Not called yet',
+  checked_in: 'Checked in',
+  absent: 'Absent',
+  skipped: 'Skipped',
+  sk: 'Silent Key',
+};
+
+/** One station's line in one session's roll call. */
+export interface Checkin extends Meta {
+  sessionId: ID;
+  groupId: ID;
+  stationId: ID;
+  /** Call sign at the time of the net, kept even if the station's call later changes. */
+  call: string;
+  /** Position in the calling order; Skip moves a station to the end. */
+  order: number;
+  status: CheckinStatus;
+  /** When the status was last set (the check-in time for checked_in). */
+  statusAt: string | null;
+  /** Checked in after the roll call, during late check-ins. */
+  late: boolean;
+  /** Not a member of the group when they checked in. */
+  visitor: boolean;
+  /** How many times this station was skipped. */
+  skips: number;
+  /** Station status before Silent Key was recorded, so undo can restore it. */
+  prevStationStatus: StationStatus | null;
 }
